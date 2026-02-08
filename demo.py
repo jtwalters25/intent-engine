@@ -353,9 +353,9 @@ def demo_latency_breakdown():
         item_id=f"item{i}",
         title=f"Product {i}",
         category=f"category{i % 3}",
-        price=100.0 * i,
-        popularity_score=0.5 + (i * 0.05),
-        quality_score=0.6 + (i * 0.04),
+        price=100.0 * (i + 1),
+        popularity_score=min(1.0, 0.5 + (i * 0.02)),
+        quality_score=min(1.0, 0.6 + (i * 0.015)),
         attributes={}
     ) for i in range(20)]
     

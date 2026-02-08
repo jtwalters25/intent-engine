@@ -12,6 +12,10 @@ from .intent_parser import IntentParser
 class RankingEngine:
     """Deterministic ranking engine with diversity guardrails."""
     
+    # Scoring weights and thresholds
+    BUDGET_PRICE_THRESHOLD_LOW = 100.0
+    BUDGET_PRICE_THRESHOLD_MID = 200.0
+    
     def __init__(self):
         self.intent_parser = IntentParser()
         
@@ -133,9 +137,9 @@ class RankingEngine:
             boost = item.quality_score * 0.2
         elif intent.intent_type == IntentType.BUDGET:
             # Boost lower-priced items
-            if item.price < 100:
+            if item.price < self.BUDGET_PRICE_THRESHOLD_LOW:
                 boost = 0.15
-            elif item.price < 200:
+            elif item.price < self.BUDGET_PRICE_THRESHOLD_MID:
                 boost = 0.1
         elif intent.intent_type == IntentType.DISCOVERY:
             # Boost less popular items for discovery
