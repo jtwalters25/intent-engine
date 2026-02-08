@@ -1,3 +1,3 @@
-"""Intent Engine - A company-agnostic re-ranking system."""
+"""Intent Engine - A deterministic intent-based ranking engine."""
 
 __version__ = "0.1.0"

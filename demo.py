@@ -1,414 +1,163 @@
-#!/usr/bin/env python3
-"""
-Demo script for Intent Engine.
+"""Demo script for the Intent Engine."""
 
-This script demonstrates the key features of the Intent Engine:
-- Rules-first intent parsing
-- Deterministic re-ranking
-- Diversity guardrails
-- Latency tracking
-"""
-
-import json
-from intent_engine.schemas import Item, UserContext, RankingRequest
-from intent_engine.ranking_engine import RankingEngine
+from intent_engine.schemas import Intent, UserContext, CandidateItem
+from intent_engine.ranker import IntentRanker
 
 
-def print_separator():
-    """Print a visual separator."""
-    print("\n" + "="*80 + "\n")
-
-
-def demo_basic_ranking():
-    """Demonstrate basic ranking without intent."""
-    print("DEMO 1: Basic Ranking (No Intent)")
-    print("-" * 40)
+def create_synthetic_data():
+    """Create synthetic user context and candidate items for demonstration."""
     
-    items = [
-        Item(
-            item_id="laptop1",
-            title="Premium Gaming Laptop",
-            category="computers",
-            price=1499.99,
-            popularity_score=0.85,
-            quality_score=0.92,
-            attributes={"brand": "ASUS", "ram": "32GB"}
+    # Create user context with intent
+    user_context = UserContext(
+        user_id="demo_user_001",
+        intent=Intent(
+            intent_type="search",
+            keywords=["python", "machine learning"],
+            preferences={
+                "category": "technology",
+                "difficulty": "intermediate"
+            },
+            priority=0.9
         ),
-        Item(
-            item_id="laptop2",
-            title="Budget Student Laptop",
-            category="computers",
-            price=499.99,
-            popularity_score=0.65,
-            quality_score=0.75,
-            attributes={"brand": "Acer", "ram": "8GB"}
+        history=["item_101", "item_102"],
+        metadata={"location": "US", "device": "desktop"}
+    )
+    
+    # Create candidate items
+    candidates = [
+        CandidateItem(
+            item_id="item_201",
+            title="Introduction to Python Programming",
+            attributes={
+                "category": "technology",
+                "tags": ["python", "programming", "beginner"],
+                "difficulty": "beginner",
+                "rating": 4.5
+            },
+            base_score=0.75
         ),
-        Item(
-            item_id="mouse1",
-            title="Wireless Gaming Mouse",
-            category="accessories",
-            price=79.99,
-            popularity_score=0.80,
-            quality_score=0.85,
-            attributes={"brand": "Logitech"}
+        CandidateItem(
+            item_id="item_202",
+            title="Machine Learning with Python",
+            attributes={
+                "category": "technology",
+                "tags": ["python", "machine learning", "data science"],
+                "difficulty": "intermediate",
+                "rating": 4.8
+            },
+            base_score=0.82
+        ),
+        CandidateItem(
+            item_id="item_203",
+            title="Advanced JavaScript Techniques",
+            attributes={
+                "category": "technology",
+                "tags": ["javascript", "web development", "advanced"],
+                "difficulty": "advanced",
+                "rating": 4.3
+            },
+            base_score=0.68
+        ),
+        CandidateItem(
+            item_id="item_204",
+            title="Deep Learning Fundamentals",
+            attributes={
+                "category": "technology",
+                "tags": ["machine learning", "deep learning", "neural networks"],
+                "difficulty": "intermediate",
+                "rating": 4.7
+            },
+            base_score=0.79
+        ),
+        CandidateItem(
+            item_id="item_205",
+            title="Python for Data Analysis",
+            attributes={
+                "category": "technology",
+                "tags": ["python", "data analysis", "pandas"],
+                "difficulty": "intermediate",
+                "rating": 4.6
+            },
+            base_score=0.71
+        ),
+        CandidateItem(
+            item_id="item_206",
+            title="Web Design Basics",
+            attributes={
+                "category": "design",
+                "tags": ["web design", "css", "html"],
+                "difficulty": "beginner",
+                "rating": 4.2
+            },
+            base_score=0.65
         ),
     ]
     
-    user_context = UserContext(
-        user_id="demo_user_1",
-        preferences={},
-        history=[]
-    )
-    
-    engine = RankingEngine()
-    request = RankingRequest(
-        items=items,
-        user_context=user_context,
-        intent_text=None,
-        use_llm=False
-    )
-    
-    response = engine.rank(request)
-    
-    print(f"Items ranked: {len(response.ranked_items)}")
-    print(f"Total latency: {response.latency.total_ms:.2f}ms")
-    print("\nTop 3 Results:")
-    for ranked_item in response.ranked_items[:3]:
-        print(f"  {ranked_item.rank}. {ranked_item.item.title}")
-        print(f"     Score: {ranked_item.score:.3f}")
-        print(f"     Explanation: {ranked_item.explanation}")
+    return user_context, candidates
 
 
-def demo_popular_intent():
-    """Demonstrate ranking with popular intent."""
-    print("DEMO 2: Popular Intent")
-    print("-" * 40)
-    
-    items = [
-        Item(
-            item_id="phone1",
-            title="Flagship Smartphone",
-            category="phones",
-            price=999.99,
-            popularity_score=0.95,
-            quality_score=0.90,
-            attributes={"brand": "Apple"}
-        ),
-        Item(
-            item_id="phone2",
-            title="Mid-range Phone",
-            category="phones",
-            price=499.99,
-            popularity_score=0.60,
-            quality_score=0.80,
-            attributes={"brand": "Samsung"}
-        ),
-        Item(
-            item_id="phone3",
-            title="Budget Phone",
-            category="phones",
-            price=299.99,
-            popularity_score=0.45,
-            quality_score=0.70,
-            attributes={"brand": "Motorola"}
-        ),
-    ]
-    
-    user_context = UserContext(
-        user_id="demo_user_2",
-        preferences={},
-        history=[]
-    )
-    
-    engine = RankingEngine()
-    request = RankingRequest(
-        items=items,
-        user_context=user_context,
-        intent_text="show me popular trending items",
-        use_llm=False
-    )
-    
-    response = engine.rank(request)
-    
-    print(f"Intent detected: {response.intent.intent_type}")
-    print(f"Confidence: {response.intent.confidence:.2f}")
-    print(f"Total latency: {response.latency.total_ms:.2f}ms")
-    print("\nRanked Results:")
-    for ranked_item in response.ranked_items:
-        print(f"  {ranked_item.rank}. {ranked_item.item.title}")
-        print(f"     Popularity: {ranked_item.item.popularity_score:.2f}")
-        print(f"     Score: {ranked_item.score:.3f}")
-        print(f"     Explanation: {ranked_item.explanation}")
-
-
-def demo_budget_constraint():
-    """Demonstrate budget constraints."""
-    print("DEMO 3: Budget Intent with Price Filter")
-    print("-" * 40)
-    
-    items = [
-        Item(
-            item_id="headphone1",
-            title="Premium Noise-Canceling Headphones",
-            category="audio",
-            price=349.99,
-            popularity_score=0.88,
-            quality_score=0.93,
-            attributes={"brand": "Sony"}
-        ),
-        Item(
-            item_id="headphone2",
-            title="Good Quality Headphones",
-            category="audio",
-            price=149.99,
-            popularity_score=0.75,
-            quality_score=0.82,
-            attributes={"brand": "Sennheiser"}
-        ),
-        Item(
-            item_id="headphone3",
-            title="Basic Headphones",
-            category="audio",
-            price=49.99,
-            popularity_score=0.60,
-            quality_score=0.70,
-            attributes={"brand": "Generic"}
-        ),
-    ]
-    
-    user_context = UserContext(
-        user_id="demo_user_3",
-        preferences={},
-        history=[],
-        budget_range=(50.0, 200.0)
-    )
-    
-    engine = RankingEngine()
-    request = RankingRequest(
-        items=items,
-        user_context=user_context,
-        intent_text="find affordable options under $150",
-        use_llm=False
-    )
-    
-    response = engine.rank(request)
-    
-    print(f"Intent: {response.intent.intent_type}")
-    print(f"User budget: ${user_context.budget_range[0]}-${user_context.budget_range[1]}")
-    print(f"Extracted filters: {response.intent.extracted_filters}")
-    print("\nRanked Results:")
-    for ranked_item in response.ranked_items:
-        in_budget = "✓" if ranked_item.item.price <= 200 else "✗"
-        print(f"  {ranked_item.rank}. {ranked_item.item.title}")
-        print(f"     Price: ${ranked_item.item.price} {in_budget}")
-        print(f"     Score: {ranked_item.score:.3f}")
-        print(f"     Explanation: {ranked_item.explanation}")
-
-
-def demo_user_preferences():
-    """Demonstrate user preference matching."""
-    print("DEMO 4: User Preference Matching")
-    print("-" * 40)
-    
-    items = [
-        Item(
-            item_id="tablet1",
-            title="iPad Pro",
-            category="tablets",
-            price=799.99,
-            popularity_score=0.90,
-            quality_score=0.92,
-            attributes={"brand": "Apple", "storage": "256GB"}
-        ),
-        Item(
-            item_id="tablet2",
-            title="Galaxy Tab",
-            category="tablets",
-            price=649.99,
-            popularity_score=0.75,
-            quality_score=0.85,
-            attributes={"brand": "Samsung", "storage": "128GB"}
-        ),
-        Item(
-            item_id="tablet3",
-            title="Surface Pro",
-            category="tablets",
-            price=999.99,
-            popularity_score=0.70,
-            quality_score=0.88,
-            attributes={"brand": "Microsoft", "storage": "512GB"}
-        ),
-    ]
-    
-    user_context = UserContext(
-        user_id="demo_user_4",
-        preferences={"brand": "Apple", "category": "tablets"},
-        history=["tablet2"]  # Previously viewed Galaxy Tab
-    )
-    
-    engine = RankingEngine()
-    request = RankingRequest(
-        items=items,
-        user_context=user_context,
-        intent_text=None,
-        use_llm=False
-    )
-    
-    response = engine.rank(request)
-    
-    print(f"User preferences: {user_context.preferences}")
-    print(f"User history: {user_context.history}")
-    print("\nRanked Results:")
-    for ranked_item in response.ranked_items:
-        brand_match = "✓" if ranked_item.item.attributes.get("brand") == "Apple" else ""
-        history_match = "📖" if ranked_item.item.item_id in user_context.history else ""
-        print(f"  {ranked_item.rank}. {ranked_item.item.title} {brand_match}{history_match}")
-        print(f"     Brand: {ranked_item.item.attributes.get('brand')}")
-        print(f"     Score: {ranked_item.score:.3f}")
-        print(f"     Explanation: {ranked_item.explanation}")
-
-
-def demo_diversity_guardrails():
-    """Demonstrate diversity guardrails."""
-    print("DEMO 5: Diversity Guardrails")
-    print("-" * 40)
-    
-    # Create many items from same category
-    items = []
-    for i in range(6):
-        items.append(Item(
-            item_id=f"laptop{i+1}",
-            title=f"Laptop Model {i+1}",
-            category="computers",
-            price=800.0 + (i * 100),
-            popularity_score=0.9 - (i * 0.05),
-            quality_score=0.85,
-            attributes={"brand": "Various"}
-        ))
-    
-    # Add items from different categories
-    items.append(Item(
-        item_id="mouse1",
-        title="Gaming Mouse",
-        category="accessories",
-        price=59.99,
-        popularity_score=0.70,
-        quality_score=0.80,
-        attributes={"brand": "Logitech"}
-    ))
-    
-    items.append(Item(
-        item_id="monitor1",
-        title="4K Monitor",
-        category="displays",
-        price=499.99,
-        popularity_score=0.75,
-        quality_score=0.82,
-        attributes={"brand": "Dell"}
-    ))
-    
-    user_context = UserContext(
-        user_id="demo_user_5",
-        preferences={},
-        history=[]
-    )
-    
-    engine = RankingEngine()
-    request = RankingRequest(
-        items=items,
-        user_context=user_context,
-        intent_text=None,
-        use_llm=False
-    )
-    
-    response = engine.rank(request)
-    
-    print("Checking for category diversity...")
-    print("\nRanked Results:")
-    prev_categories = []
-    for ranked_item in response.ranked_items:
-        category = ranked_item.item.category
-        
-        # Check diversity rule
-        if len(prev_categories) >= 2:
-            if prev_categories[-1] == category and prev_categories[-2] == category:
-                warning = " ⚠️ DIVERSITY ISSUE"
-            else:
-                warning = ""
-        else:
-            warning = ""
-        
-        print(f"  {ranked_item.rank}. {ranked_item.item.title}")
-        print(f"     Category: {category}{warning}")
-        
-        prev_categories.append(category)
-
-
-def demo_latency_breakdown():
-    """Demonstrate latency breakdown."""
-    print("DEMO 6: Latency Breakdown")
-    print("-" * 40)
-    
-    items = [Item(
-        item_id=f"item{i}",
-        title=f"Product {i}",
-        category=f"category{i % 3}",
-        price=100.0 * (i + 1),
-        popularity_score=min(1.0, 0.5 + (i * 0.02)),
-        quality_score=min(1.0, 0.6 + (i * 0.015)),
-        attributes={}
-    ) for i in range(20)]
-    
-    user_context = UserContext(
-        user_id="demo_user_6",
-        preferences={},
-        history=[]
-    )
-    
-    engine = RankingEngine()
-    request = RankingRequest(
-        items=items,
-        user_context=user_context,
-        intent_text="show me the best quality premium items",
-        use_llm=False
-    )
-    
-    response = engine.rank(request)
-    
-    print(f"Ranked {len(response.ranked_items)} items")
-    print("\nLatency Breakdown:")
-    print(f"  Intent Parsing: {response.latency.intent_parsing_ms:.2f}ms")
-    print(f"  Ranking:        {response.latency.ranking_ms:.2f}ms")
-    print(f"  Diversity:      {response.latency.diversity_check_ms:.2f}ms")
-    print(f"  {'─'*40}")
-    print(f"  Total:          {response.latency.total_ms:.2f}ms")
+def print_divider():
+    """Print a visual divider."""
+    print("\n" + "=" * 80 + "\n")
 
 
 def main():
-    """Run all demos."""
-    print("\n" + "="*80)
-    print(" "*20 + "INTENT ENGINE DEMO")
-    print("="*80)
+    """Run the demo."""
+    print("Intent Engine Demo")
+    print_divider()
     
-    demos = [
-        demo_basic_ranking,
-        demo_popular_intent,
-        demo_budget_constraint,
-        demo_user_preferences,
-        demo_diversity_guardrails,
-        demo_latency_breakdown,
-    ]
+    # Create synthetic data
+    user_context, candidates = create_synthetic_data()
     
-    for i, demo in enumerate(demos, 1):
-        print_separator()
-        demo()
+    # Display user context
+    print("USER CONTEXT")
+    print(f"User ID: {user_context.user_id}")
+    print(f"Intent Type: {user_context.intent.intent_type}")
+    print(f"Keywords: {', '.join(user_context.intent.keywords)}")
+    print(f"Preferences: {user_context.intent.preferences}")
+    print(f"Priority: {user_context.intent.priority}")
+    print_divider()
     
-    print_separator()
-    print("Demo completed! Run the FastAPI server with:")
-    print("  python -m intent_engine.app")
-    print("\nThen test the API:")
-    print("  curl http://localhost:8000/")
-    print("="*80 + "\n")
+    # Display candidate items
+    print("CANDIDATE ITEMS")
+    for i, item in enumerate(candidates, 1):
+        print(f"{i}. {item.title} (ID: {item.item_id})")
+        print(f"   Base Score: {item.base_score:.3f}")
+        print(f"   Attributes: {item.attributes}")
+    print_divider()
+    
+    # Initialize ranker with 50/50 weight between base score and intent score
+    ranker = IntentRanker(intent_weight=0.5)
+    
+    # Rank items
+    ranked_items = ranker.rank(candidates, user_context)
+    
+    # Display ranked results
+    print("RANKED RESULTS")
+    print("(Sorted by final score, showing top results with explanations)\n")
+    
+    for i, ranked_item in enumerate(ranked_items, 1):
+        item = ranked_item.item
+        print(f"{i}. {item.title}")
+        print(f"   Item ID: {item.item_id}")
+        print(f"   Final Score: {ranked_item.final_score:.3f}")
+        print(f"   Intent Score: {ranked_item.intent_score:.3f}")
+        print(f"   Base Score: {item.base_score:.3f}")
+        
+        # Show detailed explanation for top 3 items
+        if i <= 3:
+            print(f"   📝 Explanation: {ranked_item.explanation}")
+        print()
+    
+    print_divider()
+    
+    # Show summary statistics
+    print("SUMMARY")
+    print(f"Total items ranked: {len(ranked_items)}")
+    print(f"Intent weight: {ranker.intent_weight}")
+    print(f"Top ranked item: {ranked_items[0].item.title}")
+    print(f"Top score: {ranked_items[0].final_score:.3f}")
+    print_divider()
 
 
 if __name__ == "__main__":
