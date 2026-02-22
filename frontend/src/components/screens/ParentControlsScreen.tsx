@@ -18,11 +18,11 @@ const ParentControlsScreen: React.FC = () => {
   } = useWizard();
 
   const handleBackToBrowse = () => {
-    setCurrentStep(2); // Back to curated home
+    setCurrentStep(1); // Back to curated home
   };
 
   const handleSave = () => {
-    setCurrentStep(2); // Back to curated home after saving
+    setCurrentStep(1); // Back to curated home after saving
   };
 
   const timeOptions = [

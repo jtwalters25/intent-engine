@@ -198,6 +198,29 @@
   }
 }
 
+/* Kid-mode: brighter, warmer palette */
+.kid-mode {
+  --background: 270 30% 12%;
+  --foreground: 50 80% 95%;
+  --card: 270 20% 16%;
+  --card-foreground: 50 80% 95%;
+  --primary: 280 70% 65%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 270 15% 22%;
+  --muted-foreground: 50 30% 70%;
+  --accent: 40 80% 60%;
+  --accent-foreground: 0 0% 100%;
+  --border: 270 15% 25%;
+  --ring: 280 70% 65%;
+}
+
+.kid-mode .kid-card {
+  transition: transform 0.2s ease;
+}
+.kid-mode .kid-card:active {
+  transform: scale(0.97);
+}
+
 /* Netflix-style scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

@@ -20,7 +20,7 @@ const ContentDetailScreen: React.FC = () => {
   }
 
   const handleBackToBrowse = () => {
-    setCurrentStep(2); // Back to curated home
+    setCurrentStep(1); // Back to curated home
   };
 
   return (
@@ -113,7 +113,7 @@ const ContentDetailScreen: React.FC = () => {
                     <Shield className="w-5 h-5 text-trust" />
                   </div>
                   <h2 className="text-xl font-semibold text-foreground">
-                    Why this was selected for tonight
+                    Why we picked this
                   </h2>
                 </div>
 

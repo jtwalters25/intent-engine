@@ -1,13 +1,42 @@
 import { Show } from '@/contexts/WizardContext';
 
+// ---------------------------------------------------------------------------
+// Thumbnail generator — consistent themed gradient cards with emoji icons
+// ---------------------------------------------------------------------------
+
+const thumb = (
+  emoji: string,
+  gradFrom: string,
+  gradTo: string,
+  label: string,
+): string => {
+  // Encode an inline SVG as a data URI — no external dependencies
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${gradFrom}"/>
+        <stop offset="100%" stop-color="${gradTo}"/>
+      </linearGradient>
+    </defs>
+    <rect width="400" height="225" rx="0" fill="url(#g)"/>
+    <text x="200" y="100" font-size="64" text-anchor="middle" dominant-baseline="central">${emoji}</text>
+    <text x="200" y="160" font-family="system-ui,sans-serif" font-size="16" font-weight="600" fill="rgba(255,255,255,0.85)" text-anchor="middle">${label}</text>
+  </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
+// ---------------------------------------------------------------------------
+// Show catalog
+// ---------------------------------------------------------------------------
+
 export const mockShows: Show[] = [
-  // Calm/Bedtime shows
+  // ── Calm / Bedtime ─────────────────────────────────────────────────────
   {
     id: '1',
     title: 'Sleepy Ocean',
     description: 'Gentle underwater adventures with soft narration and calming visuals. Perfect for winding down before sleep.',
-    thumbnail: 'https://images.unsplash.com/photo-1559825481-12a05cc00344?w=400&h=225&fit=crop',
-    badges: ['Low Energy', 'Ages 4-7', 'Calm'],
+    thumbnail: thumb('🌊', '#1a1a4e', '#2d3a8c', 'Sleepy Ocean'),
+    badges: ['Low Energy', 'Ages 4-7'],
     reasons: [
       'Calm pacing — gentle transitions, no jarring sounds',
       'Age-appropriate themes for ages 4-7',
@@ -23,8 +52,8 @@ export const mockShows: Show[] = [
     id: '2',
     title: 'Whisper Woods',
     description: 'Friendly forest animals share quiet stories and soft songs in a magical woodland setting.',
-    thumbnail: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&h=225&fit=crop',
-    badges: ['Low Energy', 'Ages 3-6', 'Nature'],
+    thumbnail: thumb('🌲', '#1a3a2a', '#2d6b4a', 'Whisper Woods'),
+    badges: ['Low Energy', 'Ages 3-6'],
     reasons: [
       'Soft, melodic soundtrack promotes relaxation',
       'Short 10-minute episodes',
@@ -40,8 +69,8 @@ export const mockShows: Show[] = [
     id: '3',
     title: 'Moonbeam Meditations',
     description: 'Guided breathing exercises and calming visualizations designed for young children.',
-    thumbnail: 'https://images.unsplash.com/photo-1532767153582-b1a0e5145009?w=400&h=225&fit=crop',
-    badges: ['Low Energy', 'Ages 4-8', 'Wellness'],
+    thumbnail: thumb('🌙', '#2a1a4e', '#5a3a8c', 'Moonbeam Meditations'),
+    badges: ['Low Energy', 'Ages 4-8'],
     reasons: [
       'Teaches healthy relaxation techniques',
       'Soft visuals with minimal movement',
@@ -54,13 +83,13 @@ export const mockShows: Show[] = [
     learningFocus: ['emotional'],
   },
 
-  // STEM/Science shows
+  // ── STEM / Science ─────────────────────────────────────────────────────
   {
     id: '4',
     title: 'Cosmic Explorers',
     description: 'Join young astronauts on incredible journeys through space, learning about planets, stars, and the universe.',
-    thumbnail: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&h=225&fit=crop',
-    badges: ['Medium Energy', 'Ages 5-8', 'STEM'],
+    thumbnail: thumb('🚀', '#0a1628', '#1a3a6b', 'Cosmic Explorers'),
+    badges: ['Medium Energy', 'Ages 5-8'],
     reasons: [
       'Age-appropriate science concepts',
       'Encourages curiosity and wonder',
@@ -76,8 +105,8 @@ export const mockShows: Show[] = [
     id: '5',
     title: 'Little Lab',
     description: 'Fun experiments and discoveries with curious characters who love asking "why?" and finding out how things work.',
-    thumbnail: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=400&h=225&fit=crop',
-    badges: ['Medium Energy', 'Ages 4-7', 'Science'],
+    thumbnail: thumb('🧪', '#1a3a3a', '#2d8c8c', 'Little Lab'),
+    badges: ['Medium Energy', 'Ages 4-7'],
     reasons: [
       'Hands-on experiments kids can try at home',
       'Teaches scientific method basics',
@@ -93,8 +122,8 @@ export const mockShows: Show[] = [
     id: '6',
     title: 'Number Ninjas',
     description: 'Math becomes an adventure as kids solve puzzles, count treasures, and discover patterns in everyday life.',
-    thumbnail: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=400&h=225&fit=crop',
-    badges: ['Medium Energy', 'Ages 5-7', 'Math'],
+    thumbnail: thumb('🔢', '#1a2a3a', '#3a6a8c', 'Number Ninjas'),
+    badges: ['Medium Energy', 'Ages 5-7'],
     reasons: [
       'Makes math fun and accessible',
       'Grade-aligned content for K-2',
@@ -107,13 +136,13 @@ export const mockShows: Show[] = [
     learningFocus: ['stem'],
   },
 
-  // Emotional Intelligence shows
+  // ── Emotional Intelligence ─────────────────────────────────────────────
   {
     id: '7',
     title: 'Feelings Friends',
     description: 'A diverse group of friends learn to understand, express, and manage their emotions together.',
-    thumbnail: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=400&h=225&fit=crop',
-    badges: ['Low Energy', 'Ages 4-7', 'Emotional Growth'],
+    thumbnail: thumb('💛', '#3a1a2a', '#8c3a5a', 'Feelings Friends'),
+    badges: ['Low Energy', 'Ages 4-7'],
     reasons: [
       'Teaches emotional vocabulary',
       'Models healthy conflict resolution',
@@ -129,8 +158,8 @@ export const mockShows: Show[] = [
     id: '8',
     title: 'Kindness Kingdom',
     description: 'Stories about empathy, sharing, and caring for others in a magical kingdom where kindness is the greatest power.',
-    thumbnail: 'https://images.unsplash.com/photo-1489710437720-ebb67ec84dd2?w=400&h=225&fit=crop',
-    badges: ['Low Energy', 'Ages 3-6', 'Values'],
+    thumbnail: thumb('👑', '#3a2a1a', '#8c6a3a', 'Kindness Kingdom'),
+    badges: ['Low Energy', 'Ages 3-6'],
     reasons: [
       'Promotes prosocial behavior',
       'Simple moral lessons without preaching',
@@ -146,8 +175,8 @@ export const mockShows: Show[] = [
     id: '9',
     title: 'Brave Little Me',
     description: 'A shy bunny learns to face fears, try new things, and discover inner courage with the help of loving friends.',
-    thumbnail: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=400&h=225&fit=crop',
-    badges: ['Low Energy', 'Ages 4-6', 'Courage'],
+    thumbnail: thumb('🐰', '#2a1a3a', '#6a3a8c', 'Brave Little Me'),
+    badges: ['Low Energy', 'Ages 4-6'],
     reasons: [
       'Normalizes fear and anxiety',
       'Shows gradual, realistic progress',
@@ -160,13 +189,13 @@ export const mockShows: Show[] = [
     learningFocus: ['emotional'],
   },
 
-  // Social Skills shows
+  // ── Social Skills ──────────────────────────────────────────────────────
   {
     id: '10',
     title: 'Playground Pals',
     description: 'Learn the art of making friends, taking turns, and navigating social situations on the playground.',
-    thumbnail: 'https://images.unsplash.com/photo-1564429238535-92ffd37f5852?w=400&h=225&fit=crop',
-    badges: ['Medium Energy', 'Ages 4-7', 'Social Skills'],
+    thumbnail: thumb('🤝', '#2a3a1a', '#6a8c3a', 'Playground Pals'),
+    badges: ['Medium Energy', 'Ages 4-7'],
     reasons: [
       'Teaches turn-taking and sharing',
       'Models inclusive play',
@@ -182,8 +211,8 @@ export const mockShows: Show[] = [
     id: '11',
     title: 'Team Builders',
     description: 'A group of friends tackle challenges by working together, learning that teamwork makes dreams work.',
-    thumbnail: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=225&fit=crop',
-    badges: ['Medium Energy', 'Ages 5-8', 'Teamwork'],
+    thumbnail: thumb('🏗️', '#1a2a2a', '#3a6a6a', 'Team Builders'),
+    badges: ['Medium Energy', 'Ages 5-8'],
     reasons: [
       'Emphasizes collaboration over competition',
       'Shows different strengths contributing to success',
@@ -196,13 +225,13 @@ export const mockShows: Show[] = [
     learningFocus: ['social'],
   },
 
-  // Literacy shows
+  // ── Literacy ───────────────────────────────────────────────────────────
   {
     id: '12',
     title: 'Story Sprouts',
     description: 'Animated tales that bring classic stories to life while building vocabulary and comprehension skills.',
-    thumbnail: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=225&fit=crop',
-    badges: ['Low Energy', 'Ages 4-7', 'Reading'],
+    thumbnail: thumb('📖', '#2a1a3a', '#6a4a8c', 'Story Sprouts'),
+    badges: ['Low Energy', 'Ages 4-7'],
     reasons: [
       'Builds vocabulary through context',
       'Encourages love of stories and books',
@@ -218,8 +247,8 @@ export const mockShows: Show[] = [
     id: '13',
     title: 'Letter Land',
     description: 'Phonics adventures where letters come alive to teach reading fundamentals in fun, memorable ways.',
-    thumbnail: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=225&fit=crop',
-    badges: ['Medium Energy', 'Ages 3-6', 'Phonics'],
+    thumbnail: thumb('🔤', '#1a1a3a', '#4a4a8c', 'Letter Land'),
+    badges: ['Medium Energy', 'Ages 3-6'],
     reasons: [
       'Evidence-based phonics instruction',
       'Multi-sensory learning approach',
@@ -232,13 +261,13 @@ export const mockShows: Show[] = [
     learningFocus: ['literacy'],
   },
 
-  // Just for Fun shows
+  // ── Just for Fun ───────────────────────────────────────────────────────
   {
     id: '14',
     title: 'Giggle Galaxy',
     description: 'Pure silliness and laughter with wacky characters and absurd adventures that make kids (and parents) laugh out loud.',
-    thumbnail: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=400&h=225&fit=crop',
-    badges: ['High Energy', 'Ages 4-8', 'Comedy'],
+    thumbnail: thumb('😂', '#3a1a1a', '#8c3a3a', 'Giggle Galaxy'),
+    badges: ['High Energy', 'Ages 4-8'],
     reasons: [
       'Pure entertainment and joy',
       'Age-appropriate humor',
@@ -254,8 +283,8 @@ export const mockShows: Show[] = [
     id: '15',
     title: 'Dance Party Animals',
     description: 'Get up and move! Interactive dance and movement show featuring animal friends and catchy songs.',
-    thumbnail: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&h=225&fit=crop',
-    badges: ['High Energy', 'Ages 3-7', 'Movement'],
+    thumbnail: thumb('💃', '#3a2a1a', '#8c5a2a', 'Dance Party Animals'),
+    badges: ['High Energy', 'Ages 3-7'],
     reasons: [
       'Promotes physical activity',
       'Interactive — encourages participation',
@@ -271,8 +300,8 @@ export const mockShows: Show[] = [
     id: '16',
     title: 'Silly Chefs',
     description: 'Cooking shows for kids featuring easy recipes, food facts, and plenty of kitchen chaos and laughs.',
-    thumbnail: 'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=400&h=225&fit=crop',
-    badges: ['Medium Energy', 'Ages 5-9', 'Cooking'],
+    thumbnail: thumb('👨‍🍳', '#2a1a1a', '#6a3a3a', 'Silly Chefs'),
+    badges: ['Medium Energy', 'Ages 5-9'],
     reasons: [
       'Inspires interest in cooking',
       'Simple recipes families can try together',
