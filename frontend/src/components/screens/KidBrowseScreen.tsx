@@ -1,25 +1,26 @@
-import React, { useState, useMemo } from 'react';
-import { useWizard } from '@/contexts/WizardContext';
+import React, { useMemo } from 'react';
+import { useWizard, Show } from '@/contexts/WizardContext';
 import { mockShows } from '@/data/mockShows';
+import ContentRow from '@/components/ContentRow';
+import ShowCard from '@/components/ShowCard';
+import { Play, Info } from 'lucide-react';
 
 const ENERGY_MAP: Record<string, number> = { low: 15, medium: 50, high: 85 };
 
-type Mood = 'happy' | 'calm' | 'silly';
-
-const moods: { value: Mood; emoji: string; label: string; energyBias: number }[] = [
-  { value: 'happy', emoji: '😊', label: 'Happy', energyBias: 60 },
-  { value: 'calm', emoji: '😌', label: 'Calm', energyBias: 20 },
-  { value: 'silly', emoji: '🤪', label: 'Silly', energyBias: 85 },
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  bedtime: 'Calm & Bedtime Stories',
+  science: 'STEM Adventures',
+  emotional: 'Feelings & Empathy',
+  social: 'Making Friends',
+  literacy: 'Stories & Words',
+  fun: 'Just for Fun',
+};
 
 const KidBrowseScreen: React.FC = () => {
-  const { state } = useWizard();
-  const [mood, setMood] = useState<Mood>('happy');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { state, setSelectedShow, setCurrentStep } = useWizard();
+  const moodEnergy = state.energyLevel ?? 50;
 
-  const moodEnergy = moods.find((m) => m.value === mood)!.energyBias;
-
-  const shows = useMemo(() => {
+  const { sortedShows, rows } = useMemo(() => {
     const { ageRange } = state;
     const [minAge, maxAge] = ageRange.split('-').map(Number);
 
@@ -28,7 +29,7 @@ const KidBrowseScreen: React.FC = () => {
       return sMin <= maxAge && sMax >= minAge;
     });
 
-    return ageFiltered
+    const sorted = ageFiltered
       .map((show) => {
         const showEnergy = ENERGY_MAP[show.energyLevel] ?? 50;
         const score = 100 - Math.abs(showEnergy - moodEnergy);
@@ -36,79 +37,105 @@ const KidBrowseScreen: React.FC = () => {
       })
       .sort((a, b) => b.score - a.score)
       .map((s) => s.show);
+
+    // Group by category, preserving energy-score order within each group
+    const categoryMap: Record<string, Show[]> = {};
+    for (const show of sorted) {
+      if (!categoryMap[show.category]) categoryMap[show.category] = [];
+      categoryMap[show.category].push(show);
+    }
+
+    const rows = Object.entries(categoryMap)
+      .filter(([, shows]) => shows.length > 0)
+      .map(([cat, shows]) => ({
+        title: CATEGORY_LABELS[cat] ?? cat,
+        shows,
+      }));
+
+    return { sortedShows: sorted, rows };
   }, [state, moodEnergy]);
 
+  const featured = sortedShows[0];
+
+  const handleShowClick = (show: Show) => {
+    setSelectedShow(show);
+    setCurrentStep(2);
+  };
+
   return (
-    <div className="min-h-screen py-6 px-4 sm:px-6 animate-fade-in">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold">
-            What do you feel like watching?
-          </h1>
-        </div>
+    <div className="min-h-screen bg-[#141414] text-white overflow-x-hidden">
 
-        {/* Mood picker */}
-        <div className="flex justify-center gap-3 mb-8">
-          {moods.map((m) => (
-            <button
-              key={m.value}
-              onClick={() => { setMood(m.value); setExpandedId(null); }}
-              className={`
-                flex flex-col items-center gap-1 px-5 py-3 rounded-2xl text-sm font-semibold transition-all duration-200
-                ${mood === m.value
-                  ? 'bg-primary/30 ring-2 ring-primary scale-105'
-                  : 'bg-card/60 hover:bg-card/80'}
-              `}
-            >
-              <span className="text-3xl">{m.emoji}</span>
-              <span>{m.label}</span>
-            </button>
-          ))}
-        </div>
+      {/* ── Hero Banner ── */}
+      {featured && (
+        <div className="relative h-[72vh] min-h-[440px] w-full">
+          {/* Backdrop image + gradients */}
+          <div className="absolute inset-0">
+            <img
+              src={featured.thumbnail}
+              alt={featured.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/55 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#141414]/90 via-[#141414]/35 to-transparent" />
+          </div>
 
-        {/* Content grid — no badges, no explanations */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {shows.map((show) => {
-            const isExpanded = expandedId === show.id;
-            return (
-              <div
-                key={show.id}
-                className="kid-card cursor-pointer"
-                onClick={() => setExpandedId(isExpanded ? null : show.id)}
+          {/* Hero text + actions */}
+          <div className="relative h-full flex flex-col justify-end pb-20 px-8 sm:px-12 md:px-16">
+            <h1 className="text-5xl sm:text-6xl font-black mb-4 leading-tight drop-shadow-xl max-w-xl">
+              {featured.title}
+            </h1>
+            <p className="text-base sm:text-lg text-white/75 mb-7 max-w-md line-clamp-2 leading-relaxed">
+              {featured.description}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleShowClick(featured)}
+                className="flex items-center gap-2 px-7 py-3 bg-white text-black font-bold text-base rounded-md hover:bg-white/85 transition-colors"
               >
-                <div className="relative overflow-hidden rounded-2xl bg-card shadow-lg ring-1 ring-white/5">
-                  <div className="aspect-video overflow-hidden">
-                    <img
-                      src={show.thumbnail}
-                      alt={show.title}
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="p-3 text-center">
-                    <h3 className="font-bold text-sm sm:text-base truncate">
-                      {show.title}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Expanded card — title + Play button only */}
-                {isExpanded && (
-                  <div className="mt-2 rounded-2xl bg-card/80 backdrop-blur-sm p-4 text-center animate-scale-in ring-1 ring-primary/30">
-                    <h3 className="font-bold text-lg mb-3">{show.title}</h3>
-                    <button className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-primary text-primary-foreground font-semibold text-base shadow-lg shadow-primary/30 transition-transform hover:scale-105">
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                      Play
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                <Play className="w-5 h-5 fill-black" />
+                Play
+              </button>
+              <button
+                onClick={() => handleShowClick(featured)}
+                className="flex items-center gap-2 px-7 py-3 bg-white/20 text-white font-bold text-base rounded-md hover:bg-white/30 transition-colors backdrop-blur-sm"
+              >
+                <Info className="w-5 h-5" />
+                More Info
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* ── Content Rows ── */}
+      <div className="relative z-10 -mt-20 pb-16 space-y-6">
+        {/* Top picks row — all shows, best match first */}
+        <ContentRow title="Top picks for you">
+          {sortedShows.map((show) => (
+            <ShowCard
+              key={show.id}
+              title={show.title}
+              thumbnail={show.thumbnail}
+              badges={show.badges}
+              onClick={() => handleShowClick(show)}
+            />
+          ))}
+        </ContentRow>
+
+        {/* Per-category rows */}
+        {rows.map((row) => (
+          <ContentRow key={row.title} title={row.title}>
+            {row.shows.map((show) => (
+              <ShowCard
+                key={show.id}
+                title={show.title}
+                thumbnail={show.thumbnail}
+                badges={show.badges}
+                onClick={() => handleShowClick(show)}
+              />
+            ))}
+          </ContentRow>
+        ))}
       </div>
     </div>
   );

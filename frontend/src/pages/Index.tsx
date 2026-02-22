@@ -13,10 +13,9 @@ const WizardContent: React.FC = () => {
 
   // Flow: Intent (0) → Browse (1) → Details (2) → Controls (3)
   const renderStep = () => {
-    // Kid view replaces browse and detail steps
-    if (isKidView && (state.currentStep === 1 || state.currentStep === 2)) {
-      return <KidBrowseScreen />;
-    }
+    // Kid view: step 1 = Netflix-style browse, step 2 = detail page
+    if (isKidView && state.currentStep === 1) return <KidBrowseScreen />;
+    if (isKidView && state.currentStep === 2) return <ContentDetailScreen />;
 
     switch (state.currentStep) {
       case 0:
