@@ -291,13 +291,13 @@ export const childProfiles = [
     id: '1',
     name: 'Emma',
     age: 6,
-    avatar: '👧',
+    avatar: '👧🏾',
   },
   {
     id: '2',
     name: 'Lucas',
     age: 4,
-    avatar: '👦',
+    avatar: '👦🏼',
   },
   {
     id: '3',
