@@ -6,9 +6,10 @@ A deterministic, intent-aware re-ranking engine with a React prototype UI. Demon
 
 ## Live Demo
 
-**Frontend:** [Coming soon — Vercel deployment]
+**Interactive UI:** https://dist-pisd-one-60.vercel.app
+**Python Backend:** Fully implemented with 168 passing tests
 
-**Backend API:** Start locally with `uvicorn backend.intent_engine.api:app --reload`
+> **Note:** The frontend currently uses mock data and is not connected to the backend API. The backend runs locally via `uvicorn`.
 
 ## What It Does
 
@@ -43,7 +44,7 @@ intent-engine/
 │   ├── pyproject.toml
 │   ├── requirements.txt
 │   └── README.md                # Backend-specific docs
-├── frontend/                    # React UI prototype (Lovable export)
+├── frontend/                    # React UI prototype
 │   ├── src/                     # React components, pages, hooks
 │   ├── public/                  # Static assets
 │   ├── package.json
@@ -128,7 +129,7 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 
 ## About
 
-Built by [Jeremiah Walters](https://github.com/jtwalters25) — exploring how thoughtful systems design can make streaming better for families.
+Built by [Jeremiah Walters](https://www.linkedin.com/in/jeremiahwalters/) ([GitHub](https://github.com/jtwalters25)) — exploring how thoughtful systems design can make streaming better for families.
 
 ## License
 
