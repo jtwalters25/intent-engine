@@ -40,6 +40,13 @@ htmlcov/
 *.swo
 *~
 
+# Node / Frontend
+node_modules/
+dist/
+.env.local
+.env.*.local
+*.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db
