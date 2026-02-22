@@ -96,35 +96,40 @@ class IntentRanker:
         
         return weighted_score
     
-    def _generate_explanation(
+    def _generate_explanations(
         self, item: CandidateItem, context: UserContext, intent_score: float
-    ) -> str:
-        """Generate a human-readable explanation for the ranking.
-        
+    ) -> List[str]:
+        """Generate 2-3 human-readable explanation lines for the ranking.
+
+        Always returns at least 2 lines:
+          1. What matched (keywords/preferences) or why nothing matched.
+          2. A score-tier summary with the blending context.
+          3. (Optional) A note about base_score contribution if it's significant.
+
         Args:
             item: The candidate item
             context: The user context
             intent_score: The calculated intent score
-            
+
         Returns:
-            An explanation string
+            A list of 2-3 explanation strings.
         """
         intent = context.intent
-        explanations = []
-        
-        # Keyword matching explanation
+        lines: List[str] = []
+
+        # --- Line 1: keyword / preference match detail ---
+        match_parts = []
         if intent.keywords:
             matched_keywords = [
                 kw for kw in intent.keywords
-                if kw.lower() in item.title.lower() or 
-                   kw.lower() in str(item.attributes).lower()
+                if kw.lower() in item.title.lower()
+                or kw.lower() in str(item.attributes).lower()
             ]
             if matched_keywords:
-                explanations.append(
+                match_parts.append(
                     f"Matches intent keywords: {', '.join(matched_keywords)}"
                 )
-        
-        # Preference matching explanation
+
         if intent.preferences:
             matched_prefs = []
             for key, value in intent.preferences.items():
@@ -132,19 +137,34 @@ class IntentRanker:
                 if item_value is not None and str(value).lower() == str(item_value).lower():
                     matched_prefs.append(f"{key}={value}")
             if matched_prefs:
-                explanations.append(
+                match_parts.append(
                     f"Matches preferences: {', '.join(matched_prefs)}"
                 )
-        
-        # Score-based explanation
-        if intent_score >= 0.7:
-            explanations.append("Strong intent match")
-        elif intent_score >= 0.4:
-            explanations.append("Moderate intent match")
+
+        if match_parts:
+            lines.append("; ".join(match_parts))
         else:
-            explanations.append("Weak intent match")
-        
-        return "; ".join(explanations) if explanations else "No specific intent match"
+            lines.append("No direct keyword or preference match — ranked by base score")
+
+        # --- Line 2: score tier + blending context ---
+        if intent_score >= 0.7:
+            tier = "Strong"
+        elif intent_score >= 0.4:
+            tier = "Moderate"
+        else:
+            tier = "Weak"
+        lines.append(
+            f"{tier} intent match (score {intent_score:.2f}, "
+            f"weight {self.intent_weight:.0%} intent / {1 - self.intent_weight:.0%} base)"
+        )
+
+        # --- Line 3 (optional): base score note when it meaningfully affects rank ---
+        if item.base_score >= 0.7 and self.intent_weight < 1.0:
+            lines.append(f"High base score ({item.base_score:.2f}) contributes to final ranking")
+        elif item.base_score <= 0.3 and self.intent_weight < 1.0:
+            lines.append(f"Low base score ({item.base_score:.2f}) pulls final ranking down")
+
+        return lines
     
     def rank(self, candidates: List[CandidateItem], context: UserContext) -> List[RankedItem]:
         """Rank candidate items based on user context and intent.
@@ -168,15 +188,17 @@ class IntentRanker:
                 self.intent_weight * intent_score
             )
             
-            # Generate explanation
-            explanation = self._generate_explanation(item, context, intent_score)
-            
-            # Create ranked item
+            # Generate structured explanations (2-3 lines)
+            explanation_lines = self._generate_explanations(item, context, intent_score)
+
+            # Create ranked item — populate both the legacy single-string field
+            # and the new list field for richer downstream display.
             ranked_item = RankedItem(
                 item=item,
                 final_score=final_score,
                 intent_score=intent_score,
-                explanation=explanation
+                explanation="; ".join(explanation_lines),
+                explanations=explanation_lines,
             )
             ranked_items.append(ranked_item)
         

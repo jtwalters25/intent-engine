@@ -1,7 +1,7 @@
 """Demo script for the Intent Engine."""
 
 from intent_engine.schemas import Intent, UserContext, CandidateItem
-from intent_engine.ranker import IntentRanker
+from intent_engine.simple_ranker import IntentRanker
 
 
 def create_synthetic_data():

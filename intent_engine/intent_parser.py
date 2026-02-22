@@ -3,11 +3,15 @@
 import re
 from typing import Dict, Any
 from .schemas import Intent, IntentType
+from .llm_adapter import LLMAdapter
 
 
 class IntentParser:
     """Rules-based intent parser with optional LLM fallback."""
-    
+
+    def __init__(self):
+        self._llm_adapter = LLMAdapter(enabled=True)
+
     # Keywords for intent classification (ordered by specificity)
     INTENT_KEYWORDS = {
         IntentType.POPULAR: ["popular", "trending", "bestseller", "top-rated", "favorite"],
@@ -56,12 +60,11 @@ class IntentParser:
         # Extract filters using regex patterns
         extracted_filters = self._extract_filters_rules(normalized_text)
         
-        # If LLM is enabled and confidence is low, could enhance here
-        # For now, LLM is optional and off by default
+        # If LLM is enabled and confidence is low, try the adapter
         if use_llm and confidence < 0.5:
-            # Placeholder for LLM enhancement
-            # In production, would call LLM service here
-            pass
+            llm_intent = self._llm_adapter.enhance(intent_text)
+            if llm_intent is not None:
+                return llm_intent
         
         return Intent(
             intent_type=intent_type,

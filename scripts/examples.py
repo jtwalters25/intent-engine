@@ -68,7 +68,7 @@ def example_direct_usage():
 # Example 2: Using the REST API with curl
 API_EXAMPLE = """
 # Start the server
-python -m intent_engine.app
+python -m intent_engine.api
 
 # Make a ranking request
 curl -X POST "http://localhost:8000/rank" \\
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     print("\nExample 3: Using the REST API (Python)")
     print("-" * 60)
     print("# First, start the server in another terminal:")
-    print("#   python -m intent_engine.app")
+    print("#   python -m intent_engine.api")
     print("#")
     print("# Then uncomment and run:")
     print("# example_api_usage()")

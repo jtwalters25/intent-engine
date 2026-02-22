@@ -98,3 +98,13 @@ class TestIntentParser:
         
         intent = self.parser.parse("test", use_llm=False)
         assert intent.use_llm is False
+    
+    def test_llm_fallback(self, monkeypatch):
+        """Test that LLMAdapter fallback occurs when LLM output is invalid or unavailable."""
+        from intent_engine.intent_parser import IntentParser
+        parser = IntentParser()
+        monkeypatch.setenv("LLM_ENABLED", "1")
+        # Patch LLMAdapter to return invalid output
+        parser._llm_adapter._call_llm = lambda prompt: None
+        intent = parser.parse("premium tech", use_llm=True)
+        assert intent.intent_type != "llm", "Fallback to rules should occur when LLM output is invalid"

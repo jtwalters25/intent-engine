@@ -2,7 +2,7 @@
 
 import pytest
 from intent_engine.schemas import Intent, UserContext, CandidateItem
-from intent_engine.ranker import IntentRanker
+from intent_engine.simple_ranker import IntentRanker
 
 
 class TestIntentRanker:

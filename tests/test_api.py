@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from intent_engine.app import app
+from intent_engine.api import app
 from intent_engine.schemas import Item, UserContext
 
 
