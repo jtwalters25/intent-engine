@@ -139,6 +139,11 @@
   }
 }
 
+/* Demo page font utilities */
+.font-syne { font-family: 'Syne', sans-serif; }
+.font-dm-mono { font-family: 'DM Mono', monospace; }
+.font-fraunces { font-family: 'Fraunces', serif; }
+
 /* Custom animations for wizard flow */
 @layer utilities {
   .animate-fade-in {
