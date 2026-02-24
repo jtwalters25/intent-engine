@@ -1,15 +1,15 @@
-import { contexts, type ContextKey } from '@/data/demoContent';
+import type { PlatformContext } from '@/data/demoPlatforms';
 
 interface ContextSwitcherProps {
-  activeContext: ContextKey;
-  onSelect: (key: ContextKey) => void;
+  contexts: Record<string, PlatformContext>;
+  contextKeys: string[];
+  activeContext: string;
+  onSelect: (key: string) => void;
 }
 
-const contextKeys: ContextKey[] = ['bedtime', 'solo-morning', 'family-weekend', 'focus-session'];
-
-export default function ContextSwitcher({ activeContext, onSelect }: ContextSwitcherProps) {
+export default function ContextSwitcher({ contexts, contextKeys, activeContext, onSelect }: ContextSwitcherProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-1.5">
       {contextKeys.map((key) => {
         const ctx = contexts[key];
         const isActive = key === activeContext;
@@ -18,16 +18,23 @@ export default function ContextSwitcher({ activeContext, onSelect }: ContextSwit
             key={key}
             onClick={() => onSelect(key)}
             className={`
-              flex items-center gap-2 rounded-lg border px-4 py-2.5 font-syne text-sm font-semibold
-              transition-all duration-200 cursor-pointer
+              flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left
+              transition-all duration-200 cursor-pointer w-full
               ${isActive
-                ? 'border-blue-500/50 bg-blue-500/10 text-blue-300 shadow-[0_0_10px_rgba(59,130,246,0.15)]'
-                : 'border-white/10 bg-white/[0.02] text-white/50 hover:border-white/20 hover:text-white/70'
+                ? 'border-blue-500/40 bg-blue-500/10 shadow-[0_0_10px_rgba(59,130,246,0.1)]'
+                : 'border-white/5 bg-white/[0.01] hover:border-white/15 hover:bg-white/[0.03]'
               }
             `}
           >
-            <span className="text-base">{ctx.emoji}</span>
-            {ctx.label}
+            <span className="text-base mt-0.5 flex-shrink-0">{ctx.emoji}</span>
+            <div className="min-w-0">
+              <div className={`font-syne text-sm font-semibold ${isActive ? 'text-blue-300' : 'text-white/50'}`}>
+                {ctx.label}
+              </div>
+              <div className="font-dm-mono text-[10px] text-white/30 mt-0.5 leading-snug">
+                {ctx.subtitle}
+              </div>
+            </div>
           </button>
         );
       })}

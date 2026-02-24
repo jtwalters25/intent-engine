@@ -1,13 +1,14 @@
-import type { DemoItem, RankedDemoItem } from '@/data/demoContent';
+import type { PlatformItem, RankedPlatformItem } from '@/data/demoPlatforms';
 
 interface ContentCardProps {
-  item: DemoItem | RankedDemoItem;
+  item: PlatformItem | RankedPlatformItem;
   rank: number;
   variant: 'before' | 'after';
+  onHover?: (item: RankedPlatformItem | null) => void;
 }
 
-function isRanked(item: DemoItem | RankedDemoItem): item is RankedDemoItem {
-  return 'intentScore' in item;
+function isRanked(item: PlatformItem | RankedPlatformItem): item is RankedPlatformItem {
+  return 'breakdown' in item;
 }
 
 function scoreColor(score: number): string {
@@ -22,19 +23,37 @@ function scoreBg(score: number): string {
   return 'bg-neutral-500/10 border-neutral-500/30';
 }
 
-export default function ContentCard({ item, rank, variant }: ContentCardProps) {
+export default function ContentCard({ item, rank, variant, onHover }: ContentCardProps) {
   const ranked = variant === 'after' && isRanked(item) ? item : null;
-  const score = ranked ? ranked.intentScore : item.engagementScore;
+  const score = ranked ? ranked.breakdown.finalScore : item.engagementScore;
   const isBoosted = ranked?.status === 'boosted';
   const isBlocked = ranked?.status === 'blocked';
   const isDemoted = ranked?.status === 'demoted';
 
+  const handleMouseEnter = () => {
+    if (ranked && onHover) onHover(ranked);
+  };
+
+  const handleMouseLeave = () => {
+    if (onHover) onHover(null);
+  };
+
+  // Build a brief reason string from the breakdown
+  const reason = ranked
+    ? ranked.breakdown.blocked
+      ? ranked.breakdown.blockReason || 'Blocked'
+      : `time ×${ranked.breakdown.timeMultiplier} · viewer ×${ranked.breakdown.viewerMultiplier} · energy ×${ranked.breakdown.energyMultiplier}`
+    : null;
+
   return (
     <div
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={`
         relative flex items-center gap-3 rounded-lg border p-3 transition-all duration-300
         ${isBoosted ? 'border-green-500/40 bg-green-500/5 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'border-white/5 bg-white/[0.02]'}
         ${isBlocked || isDemoted ? 'opacity-50' : ''}
+        ${onHover ? 'cursor-pointer' : ''}
       `}
     >
       {/* Rank number */}
@@ -46,7 +65,7 @@ export default function ContentCard({ item, rank, variant }: ContentCardProps) {
       <div
         className="flex-shrink-0 w-14 h-14 rounded-md flex items-center justify-center text-2xl"
         style={{
-          background: `linear-gradient(135deg, ${item.thumbnail ? 'rgba(255,255,255,0.05)' : '#1a1a2e'}, rgba(255,255,255,0.02))`,
+          background: `linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))`,
         }}
       >
         {item.emoji}
@@ -60,9 +79,9 @@ export default function ContentCard({ item, rank, variant }: ContentCardProps) {
         <div className="font-dm-mono text-[11px] text-white/40 mt-0.5">
           {item.genre} · {item.rating} · {item.runtime}
         </div>
-        {ranked && ranked.reason && (
+        {reason && variant === 'after' && (
           <div className="font-dm-mono text-[10px] text-green-400/70 mt-1 leading-tight line-clamp-2">
-            {ranked.reason}
+            {reason}
           </div>
         )}
       </div>
