@@ -9,6 +9,7 @@ from intent_engine.prophecy_agent import (
     IntentSchedule,
     IntentOverride,
 )
+from intent_engine.schemas import Domain
 
 
 # ---------------------------------------------------------------------------
@@ -480,3 +481,59 @@ class TestEdgeCases:
         pred = self.agent.predict_next_intent_shift(dt)
         assert pred is not None
         assert pred["shift_type"] == "context"
+
+
+# ---------------------------------------------------------------------------
+# Domain-aware schedule filtering (v3)
+# ---------------------------------------------------------------------------
+
+class TestDomainAwareSchedules:
+    """Test that schedules can be filtered by domain."""
+
+    def setup_method(self):
+        self.agent = ProphecyAgent()
+        self.streaming_schedule = IntentSchedule(
+            time_context=TimeContext.BEDTIME,
+            start_time=time(20, 0),
+            end_time=time(22, 0),
+            intent_template={"energy_level": 0.1},
+            domain=Domain.STREAMING,
+        )
+        self.ride_schedule = IntentSchedule(
+            time_context=TimeContext.MORNING,
+            start_time=time(7, 0),
+            end_time=time(9, 0),
+            intent_template={"urgency": 0.8},
+            domain=Domain.RIDE_MATCHING,
+        )
+        self.universal_schedule = IntentSchedule(
+            time_context=TimeContext.EVENING,
+            start_time=time(17, 0),
+            end_time=time(20, 0),
+            intent_template={"mood": "relaxed"},
+            domain=None,  # applies to all domains
+        )
+        self.agent.add_schedule(self.streaming_schedule)
+        self.agent.add_schedule(self.ride_schedule)
+        self.agent.add_schedule(self.universal_schedule)
+
+    def test_domain_filter_returns_matching_schedule(self):
+        dt = datetime(2026, 2, 21, 20, 30)  # Saturday bedtime
+        sched = self.agent.get_active_schedule(dt, domain=Domain.STREAMING)
+        assert sched is self.streaming_schedule
+
+    def test_domain_filter_excludes_other_domain(self):
+        dt = datetime(2026, 2, 21, 20, 30)  # Saturday bedtime
+        sched = self.agent.get_active_schedule(dt, domain=Domain.RIDE_MATCHING)
+        # Ride schedule is morning only, so nothing matches at bedtime
+        assert sched is None
+
+    def test_universal_schedule_matches_any_domain(self):
+        dt = datetime(2026, 2, 21, 18, 0)  # Saturday evening
+        sched = self.agent.get_active_schedule(dt, domain=Domain.FOOD_DELIVERY)
+        assert sched is self.universal_schedule
+
+    def test_no_domain_filter_returns_first_match(self):
+        dt = datetime(2026, 2, 21, 20, 30)
+        sched = self.agent.get_active_schedule(dt)
+        assert sched is self.streaming_schedule  # first in insertion order

@@ -132,6 +132,79 @@ class TestEndToEnd:
         # Advanced mode always populates diversity_check_ms
         assert "diversity_check_ms" in data["latency"]
 
+    # -- domain-aware integration tests (v3) ----------------------------------
+
+    def test_streaming_domain_ranks_and_returns_breakdown(self):
+        """POST /rank with domain=streaming returns score breakdowns."""
+        resp = self.client.post("/rank", json={
+            "domain": "streaming",
+            "items": [
+                {"item_id": "s1", "title": "Calm Show", "base_score": 0.8,
+                 "attributes": {"calm_score": 0.9, "maturity": "kids", "genre": "nature"}},
+                {"item_id": "s2", "title": "Action Movie", "base_score": 0.9,
+                 "attributes": {"calm_score": 0.1, "maturity": "adult", "genre": "action"}},
+            ],
+            "user_context": {"user_id": "parent1"},
+            "constraints": {"maturity_gate": "kids"},
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["domain"] == "streaming"
+        assert len(data["ranked_items"]) == 2
+        # Adult item should be blocked
+        blocked = [ri for ri in data["ranked_items"] if ri["status"] == "blocked"]
+        assert len(blocked) == 1
+
+    def test_ride_matching_domain_surge_cap(self):
+        """POST /rank with domain=ride_matching applies surge cap."""
+        resp = self.client.post("/rank", json={
+            "domain": "ride_matching",
+            "items": [
+                {"item_id": "r1", "title": "UberX", "base_score": 0.7,
+                 "attributes": {"eta_minutes": 4, "price_multiplier": 1.2, "comfort_score": 0.5, "ride_type": "uberx"}},
+                {"item_id": "r2", "title": "Black", "base_score": 0.8,
+                 "attributes": {"eta_minutes": 6, "price_multiplier": 3.0, "comfort_score": 0.9, "ride_type": "black"}},
+            ],
+            "user_context": {"user_id": "rider1"},
+            "constraints": {"surge_cap": 2.0},
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["domain"] == "ride_matching"
+        blocked = [ri for ri in data["ranked_items"] if ri["status"] == "blocked"]
+        assert len(blocked) == 1
+        assert blocked[0]["item"]["item_id"] == "r2"
+
+    def test_food_delivery_domain_allergen_block(self):
+        """POST /rank with domain=food_delivery applies allergen block."""
+        resp = self.client.post("/rank", json={
+            "domain": "food_delivery",
+            "items": [
+                {"item_id": "f1", "title": "Pad Thai", "base_score": 0.8,
+                 "attributes": {"prep_time_minutes": 20, "health_score": 0.5, "price_tier": 2,
+                                "cuisine_type": "thai", "reorder_rate": 0.3, "allergens": ["peanuts"]}},
+                {"item_id": "f2", "title": "Caesar Salad", "base_score": 0.7,
+                 "attributes": {"prep_time_minutes": 10, "health_score": 0.8, "price_tier": 1,
+                                "cuisine_type": "american", "reorder_rate": 0.2, "allergens": []}},
+            ],
+            "user_context": {"user_id": "eater1"},
+            "constraints": {"allergens": ["peanuts"]},
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["domain"] == "food_delivery"
+        blocked = [ri for ri in data["ranked_items"] if ri["status"] == "blocked"]
+        assert len(blocked) == 1
+        assert blocked[0]["item"]["item_id"] == "f1"
+
+    def test_no_domain_falls_through_to_legacy(self):
+        """POST /rank without domain field uses legacy pipeline."""
+        resp = _post_rank(self.client, mode="advanced")
+        assert resp.status_code == 200
+        data = resp.json()
+        # Legacy path doesn't set domain
+        assert data.get("domain") is None
+
     # -- integration-level tests ---------------------------------------------
 
     def test_integration_empty_items(self):

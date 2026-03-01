@@ -9,15 +9,17 @@ A conceptual prototype demonstrating intent-aware content discovery for children
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
-2. [Design Principles](#design-principles)
-3. [High-Level System Architecture](#high-level-system-architecture)
-4. [Intent Modeling](#intent-modeling)
-5. [Ranking & Re-Ranking Strategy](#ranking--re-ranking-strategy)
-6. [Embeddings & Content Graph](#embeddings--content-graph)
-7. [Performance, Reliability & Fallbacks](#performance-reliability--fallbacks)
-8. [Privacy & Trust Considerations](#privacy--trust-considerations)
-9. [Prototype Scope & Limitations](#prototype-scope--limitations)
-10. [Why This Matters](#why-this-matters)
+2. [Interactive Demo (`/demo`)](#interactive-demo-demo)
+3. [Design Principles](#design-principles)
+4. [High-Level System Architecture](#high-level-system-architecture)
+5. [Demo Scoring Architecture](#demo-scoring-architecture)
+6. [Intent Modeling](#intent-modeling)
+7. [Ranking & Re-Ranking Strategy](#ranking--re-ranking-strategy)
+8. [Embeddings & Content Graph](#embeddings--content-graph)
+9. [Performance, Reliability & Fallbacks](#performance-reliability--fallbacks)
+10. [Privacy & Trust Considerations](#privacy--trust-considerations)
+11. [Prototype Scope & Limitations](#prototype-scope--limitations)
+12. [Why This Matters](#why-this-matters)
 
 ---
 
@@ -47,7 +49,85 @@ This project implements a **Parent-Intent Re-Ranking Layer**—a conceptual addi
 3. Re-ranks content candidates to match stated intent
 4. Maintains all existing safety guarantees
 
-The prototype UI demonstrates the parent-facing experience. The documentation below explains how the backend system would operate.
+The prototype includes two experiences:
+- **Parent UI** (`/`) — Intent setup wizard, curated home, kid browse, content detail
+- **Interactive Demo** (`/demo`) — Tweakable signal sliders with multi-platform catalogs showing real-time re-ranking
+
+---
+
+## Interactive Demo (`/demo`)
+
+The `/demo` page is a portfolio-grade interactive demonstration of the re-ranking engine.
+
+### Layout
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│          PlatformTabs (Streaming · Music · E-Commerce)          │
+├──────────┬──────────────────────────────┬───────────────────────┤
+│  LEFT    │         CENTER               │        RIGHT          │
+│          │                              │                       │
+│ Context  │  ┌─────────┐ ┌────────────┐  │  Signal Sliders      │
+│ Switcher │  │ Before  │ │   After    │  │  ├ Time of Day       │
+│ (4 pre-  │  │ column  │ │   column   │  │  ├ Viewer Profile    │
+│  sets)   │  │(engage- │ │ (intent-   │  │  ├ Energy Intent     │
+│          │  │ ment    │ │  adjusted) │  │  ├ Device            │
+│ Prophecy │  │ order)  │ │ + movement │  │  └ Prophecy Schedule │
+│ Agent    │  └─────────┘ └────────────┘  │                       │
+│ indicator│                              │  Scoring Formula     │
+│          │                              │  (live multipliers)   │
+└──────────┴──────────────────────────────┴───────────────────────┘
+```
+
+### Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `PlatformTabs` | `components/demo/PlatformTabs.tsx` | Switch between 3 platform catalogs |
+| `ContextSwitcher` | `components/demo/ContextSwitcher.tsx` | Vertical preset selector (4 per platform) |
+| `SignalSliders` | `components/demo/SignalSliders.tsx` | 5 tweakable signal weights with color-coded fills |
+| `ScoringFormula` | `components/demo/ScoringFormula.tsx` | Live code-style multiplier breakdown |
+| `ProphecyAgent` | `components/demo/ProphecyAgent.tsx` | Mock scheduling card with countdown |
+| `ContentCard` | `components/demo/ContentCard.tsx` | Item card with score badge, status, hover interaction |
+
+### Platforms & Catalogs
+
+| Platform | Items | Context Presets |
+|----------|-------|-----------------|
+| **Streaming** | Dark S3, Outer Range, Inception, The Office, Merlin Chronicles, Lion King, Planet Earth III, Bluey S4 | Bedtime, Solo Morning, Family Weekend, Focus Session |
+| **Music** | Sleep Stories Podcast, Deep Focus Playlist, Morning Jazz, True Crime Weekly, Kids Sing-Along, Lo-Fi Study, Pop Hits, Classical for Baby | Wind Down, Morning Commute, Family Playtime, Deep Work |
+| **E-Commerce** | Noise-Canceling Headphones, Smart Watch Pro, Baby Blanket, LEGO Set, Espresso Machine, Art Kit, Desk Mat, Board Games | Baby Shower, Treat Yourself, Family Holiday, Home Office |
+
+### Scoring Formula
+
+```
+final_score = base_engagement_score
+  × time_multiplier        // time → calm/active alignment
+  × viewer_multiplier      // maturity → viewer profile match
+  × energy_multiplier      // energy intent → calm score alignment
+  × device_multiplier      // device size → runtime fit
+  × prophecy_boost         // scheduled preference amplification
+  + diversity_penalty      // penalizes consecutive same-genre
+
+// Hard constraint
+if (maturity === "adult" && viewer === "kids") → BLOCKED
+```
+
+Each multiplier is computed from the item's metadata (calmScore, maturity, complexity, runtime) and the current signal value (0-1 slider). Users can tweak any signal in real-time and see the ranking update instantly.
+
+### Screenshots
+
+![Demo Overview](../docs/screenshots/07-demo-overview.png)
+**Streaming / Bedtime** — Same 8-item catalog, two columns: engagement-only (left) vs. intent-adjusted (right). At bedtime with a kids viewer profile, Bluey S4 jumps from #8 to #1. Dark Season 3 (TV-MA) drops to the bottom via the viewer multiplier. Signal sliders on the right update rankings in real-time. The scoring formula box decomposes the #1 item's score into its multiplier chain.
+
+![Scoring Formula](../docs/screenshots/08-scoring-formula.png)
+**Transparent Math** — Every ranking decision is fully decomposable: `base(0.58) x time(0.91) x viewer(1.20) x energy(0.90) x device(1.10) x prophecy(1.32) = 0.83`. No black-box ML — each multiplier maps to a single signal slider. An engineer can trace any ranking anomaly back to exactly which signal caused it.
+
+![Music Platform](../docs/screenshots/09-platform-music.png)
+**Music / Wind Down** — The same engine works across verticals. Sleep Stories Podcast holds #1 (high calm score + prophecy boost). Morning Jazz moves up past Deep Focus via the time multiplier. The architecture is platform-agnostic: swap the catalog and signal configs, keep the same scoring pipeline.
+
+![E-Commerce](../docs/screenshots/10-platform-ecommerce.png)
+**E-Commerce / Baby Shower** — Intent-aware ranking beyond media. With viewer set to "kids" for gift-buying: Baby Blanket and Art Kit jump to the top. Headphones and Smart Watch are BLOCKED — adult-maturity items gated by the viewer signal at `viewer(0.00)`. One engine, three verticals, same transparent math.
 
 ---
 
@@ -89,10 +169,11 @@ The intent-aware pipeline integrates with existing recommendation infrastructure
                    ┌─────────────────────────────────────────────────┐
                    │         INTENT-AWARE RE-RANKING LAYER           │
                    │                                                 │
-                   │  • Apply intent-based score modifiers           │
+                   │  • Apply multiplier-based score modifiers       │
                    │  • Enforce diversity constraints                │
                    │  • Apply rotation rules (avoid repetition)      │
                    │  • Respect energy-level preferences             │
+                   │  • Hard-gate maturity mismatches                │
                    └─────────────────────────────────────────────────┘
                                           │
                                           ▼
@@ -108,9 +189,47 @@ The intent-aware pipeline integrates with existing recommendation infrastructure
 | Decision | Rationale |
 |----------|-----------|
 | Re-ranking, not filtering | Intent preferences should influence order, not eliminate options |
+| Multiplier-based scoring | Transparent math; each signal's contribution is independently visible |
 | Reuse existing candidate generation | Minimizes integration risk; leverages proven ML infrastructure |
 | Intent as a modifier layer | Clean separation of concerns; easy to disable or A/B test |
 | Session-scoped intent | Privacy-preserving; no persistent behavioral modeling of children |
+
+---
+
+## Demo Scoring Architecture
+
+The `/demo` page implements the scoring model as a pure client-side function in `data/demoPlatforms.ts`.
+
+### Signal → Multiplier Mapping
+
+| Signal | Low (0) | Mid (0.5) | High (1) | Item Property Used |
+|--------|---------|-----------|----------|-------------------|
+| **Time** | Late night → neutral | Afternoon → neutral | Bedtime → favor calm | `calmScore` |
+| **Viewer** | Kids → block adult, boost kids | Teens → neutral | Solo adult → boost adult, reduce kids | `maturity` |
+| **Energy** | Wind down → strongly favor calm | Neutral | High energy → favor stimulating | `calmScore` (inverted) |
+| **Device** | Phone → favor short runtime | Laptop → neutral | Home theater → favor long premium | `runtime` |
+| **Prophecy** | Off | Moderate boost to calm | Full auto → strong calm + kids boost | `calmScore`, `maturity` |
+
+### Data Flow
+
+```
+signalOverrides (user sliders)
+        │
+        ▼
+merge with contextDefaults → SignalValues
+        │
+        ▼
+rankWithSignals(catalog, signals)
+    ├── computeTimeMultiplier(item, time)
+    ├── computeViewerMultiplier(item, viewer)    // returns 0.0 = BLOCKED
+    ├── computeEnergyMultiplier(item, energy)
+    ├── computeDeviceMultiplier(item, device)
+    ├── computeProphecyBoost(item, prophecy, time)
+    └── computeDiversityPenalty(items)
+        │
+        ▼
+ScoringBreakdown per item → sort → RankedPlatformItem[]
+```
 
 ---
 
@@ -122,38 +241,17 @@ Parent intent is represented as structured, typed data:
 
 ```typescript
 interface ParentIntent {
-  // Session context
   sessionId: string;
   childProfileId: string;
   timestamp: ISO8601;
-  
-  // Inferred defaults (can be overridden)
   timeOfDay: 'morning' | 'afternoon' | 'evening' | 'bedtime';
-  
-  // Parent-specified preferences (0-100 scale)
   energyLevel: number;  // 0 = very calm, 100 = high energy
-  
-  // Optional learning focus areas
   learningFocus: Array<'stem' | 'literacy' | 'emotional' | 'social' | 'fun'>;
-  
-  // Age alignment (may differ from profile age)
-  ageRange: string;  // e.g., "5-7"
-  
-  // Parent control flags
+  ageRange: string;
   prioritizeEducational: boolean;
   lowerStimulation: boolean;
   endOnCalmNote: boolean;
 }
-```
-
-### Intent Inference Pipeline
-
-```
-Current Time → Time-of-Day Classification → Default Energy Level
-     +
-Child Profile → Age Range → Default Learning Focus
-     +
-Parent Overrides (optional) → Final Intent Object
 ```
 
 ### On LLM Usage
@@ -170,53 +268,33 @@ LLMs are **never** given decision authority. All final ranking decisions use det
 
 ### Candidate Generation (Unchanged)
 
-The existing recommendation system generates candidate content:
-- Collaborative filtering based on similar profiles
-- Content-based similarity
-- Popularity signals within age-appropriate cohorts
-- Editorial curation and seasonal content
-
-This prototype does not modify candidate generation.
+The existing recommendation system generates candidate content. This prototype does not modify candidate generation.
 
 ### Intent-Aware Re-Ranking
 
-Re-ranking applies score modifiers based on the intent object:
+Re-ranking applies multiplier-based modifiers based on the intent signals:
 
 ```python
-def apply_intent_rerank(candidates: List[Content], intent: ParentIntent) -> List[Content]:
+def apply_intent_rerank(candidates, signals):
     for content in candidates:
-        base_score = content.recommendation_score
-        
-        # Energy alignment modifier
-        energy_delta = abs(content.energy_level - intent.energyLevel)
-        energy_modifier = 1.0 - (energy_delta / 100) * 0.4  # Max 40% penalty
-        
-        # Learning focus boost
-        learning_boost = 1.0
-        if intent.learningFocus:
-            overlap = len(set(content.learning_tags) & set(intent.learningFocus))
-            learning_boost = 1.0 + (overlap * 0.15)  # 15% boost per matching focus
-        
-        # Time-of-day appropriateness
-        time_modifier = get_time_appropriateness(content, intent.timeOfDay)
-        
-        # Educational priority
-        edu_boost = 1.2 if intent.prioritizeEducational and content.is_educational else 1.0
-        
-        # Final score
-        content.intent_score = base_score * energy_modifier * learning_boost * time_modifier * edu_boost
-    
-    return sorted(candidates, key=lambda c: c.intent_score, reverse=True)
+        score = content.base_score
+        score *= compute_time_multiplier(content, signals.time)
+        score *= compute_viewer_multiplier(content, signals.viewer)
+        score *= compute_energy_multiplier(content, signals.energy)
+        score *= compute_device_multiplier(content, signals.device)
+        score *= compute_prophecy_boost(content, signals.prophecy)
+        score += compute_diversity_penalty(content, ranked_so_far)
+        content.final_score = clamp(score, 0, 1)
+    return sorted(candidates, key=lambda c: c.final_score, reverse=True)
 ```
 
 ### Diversity & Rotation Enforcement
 
 After intent re-ranking:
 
-1. **Genre Diversity**: No more than 3 consecutive items from the same genre
-2. **Recency Penalty**: Recently watched titles receive score decay
-3. **Series Balancing**: Limit franchise over-representation
-4. **Calm Closer**: If `endOnCalmNote` is true, ensure row endings skew calm
+1. **Genre Diversity**: Duplicate genre penalty increases with each consecutive same-genre item
+2. **Hard Safety Gate**: Adult content blocked entirely for kids viewer profiles
+3. **Calm Closer**: Prophecy agent amplifies calm content near scheduled bedtime
 
 ---
 
@@ -234,13 +312,7 @@ Each title has a multi-dimensional embedding capturing:
 | Visual Stimulation | Color saturation, motion intensity |
 | Social Themes | Cooperation, conflict resolution, friendship |
 
-These embeddings enable similarity calculations beyond genre:
-- "Shows with similar pacing to *Bluey*"
-- "Calm alternatives to *Paw Patrol*"
-
 ### Content Graph
-
-A graph structure captures relationships:
 
 ```
 ┌─────────────┐     similar_tone     ┌─────────────┐
@@ -255,11 +327,6 @@ A graph structure captures relationships:
 └─────────────┘                      └─────────────┘
 ```
 
-Graph traversal supports:
-- "Show me calmer alternatives"
-- "More like this, but educational"
-- Safe exploration without jarring transitions
-
 ---
 
 ## Performance, Reliability & Fallbacks
@@ -273,21 +340,6 @@ Graph traversal supports:
 | Total overhead | < 50ms | On top of existing rec latency |
 | End-to-end | < 100ms | Full response |
 
-### Caching Strategy
-
-Common intent profiles are pre-computed and cached:
-
-```typescript
-const CACHED_PROFILES = [
-  'bedtime_calm_ages_4-6',
-  'morning_energetic_ages_5-7',
-  'afternoon_balanced_ages_3-5',
-  // ... ~50 high-frequency combinations
-];
-```
-
-Cache hit rate target: > 70% for intent-modified results.
-
 ### Fallback Hierarchy
 
 ```
@@ -300,15 +352,9 @@ Intent-Aware Ranking (primary)
     └─► Complete failure → Static curated fallback rows
 ```
 
-**The safest system is the fallback system.**
-
-Every degraded mode maintains age-appropriate, safety-filtered content. No failure path exposes inappropriate content.
-
 ---
 
 ## Privacy & Trust Considerations
-
-### Data Handling Principles
 
 | Principle | Implementation |
 |-----------|---------------|
@@ -317,114 +363,64 @@ Every degraded mode maintains age-appropriate, safety-filtered content. No failu
 | Aggregation over personalization | Insights derived from cohorts, not individuals |
 | COPPA-safe defaults | All data handling assumes child presence |
 
-### What We Don't Do
-
-- ❌ Track individual child viewing behavior for ad targeting
-- ❌ Build persistent preference models for children
-- ❌ Share intent data across profiles or households
-- ❌ Use intent signals to increase engagement metrics
-
-### What We Do
-
-- ✅ Help parents express viewing context
-- ✅ Surface content aligned with stated intent
-- ✅ Forget session intent after session ends
-- ✅ Default to maximum privacy when ambiguous
-
 ---
 
 ## Prototype Scope & Limitations
 
 ### What This Prototype Includes
 
-- **UI Flow**: Parent-facing intent setup wizard
+- **Parent UI Flow**: Intent setup wizard, curated home, kid browse, content detail
+- **Interactive Demo**: Multi-platform re-ranking with tweakable signals and live formula
 - **Visual Design**: Netflix-inspired dark theme with time-based ambient gradients
-- **Conceptual UX**: Child selection, intent configuration, content transparency panels
-- **Mock Data**: Sample show cards with intent-relevant metadata
+- **Mock Data**: 24 items across 3 platform catalogs with intent-relevant metadata
 
 ### What This Prototype Does Not Include
 
-- ❌ Real recommendation backend
-- ❌ Actual content embeddings or ML models
-- ❌ Production authentication or profile management
-- ❌ Real-time re-ranking service
-- ❌ A/B testing infrastructure
-
-### Intended Use
-
-This prototype is designed for:
-- Demonstrating systems thinking to engineering teams
-- Illustrating UX flows to product partners
-- Documenting architectural decisions for future implementation
-- Serving as a conversation starter, not a production blueprint
+- Real recommendation backend connection
+- Actual content embeddings or ML models
+- Production authentication or profile management
+- A/B testing infrastructure
 
 ---
 
 ## Why This Matters
 
 ### For Parents
-
-Current streaming experiences create decision fatigue:
-- "What should the kids watch?"
-- "Is this appropriate for bedtime?"
-- "Are they just watching junk?"
-
 Intent-aware ranking shifts the burden from parents to the system. Instead of browsing and filtering, parents express context once, and the system adapts.
 
 ### For Long-Term Trust
-
-Engagement-optimized recommendations erode parental trust:
-- Autoplay keeps kids watching past bedtime
-- Algorithmic rabbit holes lead to questionable content
-- Parents feel they're fighting the system
-
-Intent-aware ranking builds trust by aligning incentives:
-- The system respects stated boundaries
-- Recommendations support healthy routines
-- Transparency features explain "why this content"
+Intent-aware ranking builds trust by aligning incentives: the system respects stated boundaries, recommendations support healthy routines, and transparency features explain "why this content."
 
 ### For Engineering
-
-This design integrates incrementally:
-- No replacement of existing rec infrastructure
-- Clean modifier layer with rollback capability
-- Minimal latency overhead (< 50ms)
-- Graceful degradation to proven systems
-
-The architecture respects the reality that recommendation systems are complex, ML-heavy, and require careful iteration. This proposal adds intent awareness without requiring a rewrite.
+This design integrates incrementally with no replacement of existing rec infrastructure, clean modifier layer with rollback capability, minimal latency overhead (< 50ms), and graceful degradation to proven systems.
 
 ---
 
-## Technical Stack (Prototype)
-
-This UI prototype is built with:
+## Technical Stack
 
 - **React 18** with TypeScript
 - **Tailwind CSS** for styling
-- **Lucide React** for iconography
+- **Vite** for development and build
 - **Radix UI** primitives for accessibility
-- **Vite** for development
+- **Lucide React** for iconography
 
 ---
 
 ## Running the Prototype
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
+npm run dev     # Development server on localhost:5173
+npm run build   # Production build
 ```
+
+Visit `/demo` for the interactive re-ranking demo.
 
 ---
 
 ## License
 
-This is a conceptual prototype for demonstration purposes.
+MIT
 
 ---
 

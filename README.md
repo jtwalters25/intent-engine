@@ -1,15 +1,18 @@
 # Intent Engine
 
-A deterministic, intent-aware re-ranking engine with a React prototype UI. Demonstrates how parental intent signals — time of day, energy preferences, learning goals — can reshape content recommendations without ML, personalization, or randomness.
+A deterministic, intent-aware re-ranking engine with a React prototype UI. Demonstrates how contextual intent signals — time of day, viewer profile, energy level, device — can reshape content recommendations without ML, personalization, or randomness.
 
 > **Prototype** — built to demonstrate systems thinking and backend architecture, not a production service.
 
 ## Live Demo
 
-**Interactive UI:** https://dist-pisd-one-60.vercel.app
+**Interactive UI:** [https://dist-pied-one-60.vercel.app](https://dist-pied-one-60.vercel.app)
+- **Home:** Parent-intent wizard flow with kid browse, content detail, PIN gate
+- **`/demo`:** Interactive re-ranking demo with tweakable signals, multi-platform catalogs, and live scoring formula
+
 **Python Backend:** Fully implemented with 168 passing tests
 
-> **Note:** The frontend currently uses mock data and is not connected to the backend API. The backend runs locally via `uvicorn`.
+> **Note:** The frontend uses mock data and is not connected to the backend API. The backend runs locally via `uvicorn`.
 
 ## What It Does
 
@@ -20,9 +23,125 @@ A deterministic, intent-aware re-ranking engine with a React prototype UI. Demon
 **Key capabilities:**
 - Rules-first intent translation (keyword mapping, time-of-day inference)
 - Soft-constraint re-ranking (intent boosts items but never filters them)
+- Multiplier-based scoring with transparent formula display
 - Prophecy Agent for time-aware scheduling (auto-switch to bedtime mode at 8 PM)
+- Multi-platform support (Streaming, Music, E-Commerce)
 - Structured explanations for every ranking decision
 - Optional LLM fallback (off by default, env-var gated)
+
+## Interactive Demo (`/demo`)
+
+The `/demo` page is a portfolio-grade interactive demo showing the engine's re-ranking behavior across platforms.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Platform Tabs** | Switch between Streaming, Music, and E-Commerce catalogs (8 items each) |
+| **Context Presets** | 4 presets per platform (e.g., Bedtime, Solo Morning, Family Weekend, Focus Session) |
+| **Signal Sliders** | 5 tweakable signals: Time of Day, Viewer Profile, Energy Intent, Device, Prophecy Schedule |
+| **Before / After** | Side-by-side view showing engagement-only vs. intent-adjusted ranking |
+| **Scoring Formula** | Live code-style display showing the multiplier breakdown for any item |
+| **Prophecy Agent** | Mock scheduling indicator with countdown timer |
+
+### Scoring Model
+
+The demo uses a multiplier-based scoring formula:
+
+```
+final_score = base_engagement_score
+  × time_multiplier        // time-of-day → calm/active preference
+  × viewer_multiplier      // kids/family/adult content matching
+  × energy_multiplier      // energy intent alignment
+  × device_multiplier      // runtime fit for device size
+  × prophecy_boost         // scheduled preference amplification
+  + diversity_penalty      // penalizes genre repetition
+
+// Hard constraint
+if (maturity === "adult" && viewer === "kids") → BLOCKED (score = 0)
+```
+
+### Screenshots
+
+| Screen | Description |
+|--------|-------------|
+| ![Demo Overview](docs/screenshots/07-demo-overview.png) | Multi-platform demo with signal sliders and before/after ranking |
+| ![Scoring Formula](docs/screenshots/08-scoring-formula.png) | Live multiplier breakdown for a selected item |
+| ![Platform Switch](docs/screenshots/09-platform-music.png) | Music platform with wind-down context |
+
+## High-Level Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           INTENT ENGINE ARCHITECTURE                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────────────────┐
+                    │        USER / PARENT UI          │
+                    │  Intent Setup · Kid Browse · Demo │
+                    └───────────────┬─────────────────┘
+                                    │
+                    ┌───────────────▼─────────────────┐
+                    │       CONTEXT SIGNALS             │
+                    │  Time · Viewer · Energy · Device  │
+                    └───────────────┬─────────────────┘
+                                    │
+              ┌─────────────────────┴──────────────────────┐
+              │                                            │
+    ┌─────────▼──────────┐                    ┌────────────▼───────────┐
+    │   SIMPLE MODE       │                    │    ADVANCED MODE       │
+    │                     │                    │                        │
+    │ IntentTranslator    │                    │  IntentParser          │
+    │ (keyword mapping)   │                    │  (text classification) │
+    │       ↓             │                    │        ↓               │
+    │ IntentRanker        │                    │  RankingEngine         │
+    │ (soft constraints)  │                    │  (multi-factor)        │
+    └─────────┬──────────┘                    └────────────┬───────────┘
+              │                                            │
+              └─────────────────────┬──────────────────────┘
+                                    │
+                    ┌───────────────▼─────────────────┐
+                    │     MULTIPLIER SCORING LAYER      │
+                    │                                   │
+                    │  base × time × viewer × energy    │
+                    │    × device × prophecy + diversity │
+                    │                                   │
+                    │  Hard constraints: maturity gates  │
+                    └───────────────┬─────────────────┘
+                                    │
+                    ┌───────────────▼─────────────────┐
+                    │       PROPHECY AGENT             │
+                    │  Time-aware intent scheduling     │
+                    │  Auto-switch · Shift prediction   │
+                    └───────────────┬─────────────────┘
+                                    │
+                    ┌───────────────▼─────────────────┐
+                    │       RANKED OUTPUT              │
+                    │  Items + scores + explanations    │
+                    │  + latency breakdown              │
+                    └─────────────────────────────────┘
+```
+
+### Frontend Demo Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Demo.tsx (page)                          │
+│  State: activePlatform · activeContext · signalOverrides        │
+│  useMemo: rankWithSignals(catalog, signals) → rankedItems       │
+├──────────┬──────────────────────────────┬───────────────────────┤
+│  LEFT    │         CENTER               │        RIGHT          │
+│          │                              │                       │
+│ Context  │  ┌─────────┐ ┌────────────┐  │  Signal Sliders      │
+│ Switcher │  │ Before  │ │   After    │  │  (5 signals, 0-1)    │
+│ (vertical│  │ column  │ │   column   │  │                       │
+│  4 cards)│  │(engage- │ │ (intent-   │  │  Scoring Formula     │
+│          │  │ ment)   │ │  adjusted) │  │  (live multiplier    │
+│ Prophecy │  └─────────┘ └────────────┘  │   breakdown)         │
+│ Agent    │                              │                       │
+└──────────┴──────────────────────────────┴───────────────────────┘
+                    ▲ PlatformTabs (Streaming · Music · E-Commerce)
+```
 
 ## Project Structure
 
@@ -40,15 +159,24 @@ intent-engine/
 │   │   └── api.py               # FastAPI REST API
 │   ├── tests/                   # 168 tests, all passing
 │   ├── scripts/                 # Demo scripts
-│   ├── demo_prophecy.py         # Prophecy Agent demo
-│   ├── pyproject.toml
-│   ├── requirements.txt
-│   └── README.md                # Backend-specific docs
+│   └── demo_prophecy.py         # Prophecy Agent demo
 ├── frontend/                    # React UI prototype
-│   ├── src/                     # React components, pages, hooks
-│   ├── public/                  # Static assets
-│   ├── package.json
-│   └── README.md                # Frontend-specific docs
+│   ├── src/
+│   │   ├── pages/
+│   │   │   └── Demo.tsx         # Interactive re-ranking demo page
+│   │   ├── components/demo/
+│   │   │   ├── PlatformTabs.tsx  # Streaming / Music / E-Commerce tabs
+│   │   │   ├── ContextSwitcher.tsx # Vertical context preset selector
+│   │   │   ├── SignalSliders.tsx  # 5 tweakable signal weight sliders
+│   │   │   ├── ScoringFormula.tsx # Live multiplier formula display
+│   │   │   ├── ProphecyAgent.tsx  # Scheduling indicator with countdown
+│   │   │   └── ContentCard.tsx    # Item card with score badge + hover
+│   │   └── data/
+│   │       ├── demoPlatforms.ts   # 3 catalogs + signal configs + ranking
+│   │       └── demoContent.ts     # Legacy streaming-only data
+│   └── package.json
+├── docs/
+│   └── screenshots/             # UI screenshots for documentation
 └── README.md                    # This file
 ```
 
@@ -79,7 +207,7 @@ npm install
 npm run dev
 ```
 
-Opens on `http://localhost:5173`.
+Opens on `http://localhost:5173`. Visit `/demo` for the interactive re-ranking demo.
 
 ## Two Ranking Modes
 
@@ -126,6 +254,44 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 4. **Rules first** — no LLM dependency; LLM is optional and off by default
 5. **Safe defaults** — unknown input degrades gracefully to base-score ordering
 6. **Safety first** — hard constraints (age ratings) apply before any ranking logic
+
+## UI Screenshots
+
+### Parent-Intent Flow
+
+![Intent Setup](docs/screenshots/01-intent-setup.png)
+**Intent Setup** — The parent sets context once: time of day (auto-detected), energy level, and age range. No configuration fatigue — the system infers reasonable defaults, and the parent only overrides what matters. This is the "set it and forget it" entry point.
+
+![Curated Home](docs/screenshots/02-curated-home.png)
+**Curated Home** — Content rows are re-ranked by the intent engine. "Top picks for your kids" reflects the active intent — not pure engagement scores. The parent sees curated rows that match their stated context, with energy and age badges on every card for transparency.
+
+![Kid Browse](docs/screenshots/03-kid-browse.png)
+**Kid Browse** — The child's view is a Netflix-style hero + category rows experience. Content is pre-filtered and ranked by the intent layer before the child ever sees it. Categories like "STEM Adventures," "Calm & Bedtime Stories," and "Feelings & Empathy" are dynamically weighted based on the parent's intent — not hard-coded.
+
+![Content Detail](docs/screenshots/04-content-detail.png)
+**Content Detail** — Every recommendation is explainable. The "Why we picked this" panel surfaces the ranking rationale: age-appropriate science concepts, encourages curiosity, promotes critical thinking. This builds parental trust — the system isn't a black box.
+
+![PIN Modal](docs/screenshots/05-pin-modal.png)
+**PIN Gate** — Parent controls are gated behind a 4-digit PIN, keeping the child's experience uninterrupted. Simple, familiar pattern — no friction for parents, no access for kids.
+
+![Parent Controls](docs/screenshots/06-parent-controls.png)
+**Parent Controls** — Fine-grained preferences: prioritize educational content, lower stimulation mode, weekly rotation. Session settings include viewing time limits and "end on a calm note" — the system suggests calming content as the session timer winds down. The Trust & Safety card reinforces the value proposition: no ads, no autoplay escalation, content reviewed for age-appropriateness.
+
+---
+
+### Interactive Demo (`/demo`)
+
+![Demo Overview](docs/screenshots/07-demo-overview.png)
+**Re-Ranking Demo — Streaming / Bedtime** — Same 8-item catalog, two columns: engagement-only (left) vs. intent-adjusted (right). At bedtime with a kids viewer profile, Bluey S4 jumps from #8 to #1 (+7 positions). Dark Season 3 (TV-MA) drops to the bottom — the viewer multiplier gates adult content without hard-filtering it. The right panel shows 5 signal sliders that update rankings in real-time: drag any slider and watch items re-sort instantly. The scoring formula box shows the exact multiplier math for the #1 item.
+
+![Scoring Formula](docs/screenshots/08-scoring-formula.png)
+**Scoring Formula — Transparent Math** — Every ranking decision is decomposable. For Bluey S4: `base(0.58) x time(0.91) x viewer(1.20) x energy(0.90) x device(1.10) x prophecy(1.32) = 0.83`. No black-box ML — each multiplier maps to a single signal slider. An engineer can trace any ranking anomaly back to exactly which signal caused it. This is the kind of observability that makes debugging recommendation systems tractable at scale.
+
+![Music Platform](docs/screenshots/09-platform-music.png)
+**Music Platform — Wind Down** — The same engine works across verticals. Switching to Music with a "Wind Down" context: Sleep Stories Podcast stays #1 (high calm score + prophecy boost), but Morning Jazz moves up past Deep Focus — the time multiplier favors familiar, relaxed content over pure ambient. The architecture is platform-agnostic: swap the catalog and signal configs, keep the same scoring pipeline.
+
+![E-Commerce Platform](docs/screenshots/10-platform-ecommerce.png)
+**E-Commerce — Baby Shower Gifts** — Intent-aware ranking isn't just for media. With viewer set to "kids" for gift-buying context: Organic Baby Blanket and Kids Art Kit jump to the top. Noise-Canceling Headphones and Smart Watch Pro are BLOCKED — adult-maturity items gated by the viewer signal. Board Game Collection (family-friendly) gets a +4 boost. The same multiplier formula drives it: `viewer(1.20)` for kids items vs. `viewer(0.00)` for adult items. One engine, three verticals, same transparent math.
 
 ## About
 

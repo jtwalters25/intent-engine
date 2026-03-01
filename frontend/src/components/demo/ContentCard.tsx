@@ -79,7 +79,7 @@ export default function ContentCard({ item, rank, variant, onHover }: ContentCar
         <div className="font-dm-mono text-[11px] text-white/40 mt-0.5">
           {item.genre} · {item.rating} · {item.runtime}
         </div>
-        {reason && variant === 'after' && (
+        {reason && variant === 'after' && !isBlocked && (
           <div className="font-dm-mono text-[10px] text-green-400/70 mt-1 leading-tight line-clamp-2">
             {reason}
           </div>
@@ -91,9 +91,19 @@ export default function ContentCard({ item, rank, variant, onHover }: ContentCar
         {score.toFixed(2)}
       </div>
 
+      {/* Movement badge */}
+      {ranked && ranked.movement !== 0 && (
+        <div className={`
+          flex-shrink-0 font-dm-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full
+          ${ranked.movement > 0 ? 'bg-green-400/15 text-green-400' : 'bg-red-400/15 text-red-400'}
+        `}>
+          {ranked.movement > 0 ? `+${ranked.movement}` : ranked.movement}
+        </div>
+      )}
+
       {/* Blocked overlay */}
       {isBlocked && (
-        <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/40">
+        <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/40 border-l-2 border-red-500">
           <span className="font-dm-mono text-xs text-red-400/80 bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">
             BLOCKED
           </span>

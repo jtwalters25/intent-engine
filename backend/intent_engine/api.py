@@ -2,10 +2,14 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from .schemas import RankingMode, RankingRequest, RankingResponse, RankedItem, LatencyBreakdown
+from .schemas import Domain, RankingMode, RankingRequest, RankingResponse, RankedItem, LatencyBreakdown
 from .ranking_engine import RankingEngine
 from .rules_translator import IntentTranslator
 from .simple_ranker import IntentRanker
+from .core.domain_engine import DomainRankingEngine
+from .adapters.streaming import StreamingAdapter
+from .adapters.ride_matching import RideMatchingAdapter
+from .adapters.food_delivery import FoodDeliveryAdapter
 import time
 
 app = FastAPI(
@@ -27,6 +31,11 @@ app.add_middleware(
 _ranking_engine = RankingEngine()
 _translator = IntentTranslator()
 _simple_ranker = IntentRanker(intent_weight=0.6)
+_domain_engine = DomainRankingEngine({
+    Domain.STREAMING: StreamingAdapter(),
+    Domain.RIDE_MATCHING: RideMatchingAdapter(),
+    Domain.FOOD_DELIVERY: FoodDeliveryAdapter(),
+})
 
 
 @app.get("/")
@@ -83,6 +92,10 @@ async def rank_items(request: RankingRequest) -> RankingResponse:
     Dispatches to the simple or advanced pipeline based on ``request.mode``.
     """
     try:
+        # Domain-aware path (v3): delegate to adapter-based engine
+        if request.domain is not None:
+            return _domain_engine.rank(request)
+        # Legacy paths
         if request.mode == RankingMode.SIMPLE:
             return _rank_simple(request)
         return _ranking_engine.rank(request)

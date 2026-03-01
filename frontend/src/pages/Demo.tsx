@@ -21,6 +21,8 @@ export default function Demo() {
     streaming: 'bedtime',
     music: 'wind-down',
     ecommerce: 'baby-shower',
+    ride_matching: 'morning-commute',
+    food_delivery: 'sunday-comfort',
   });
   const [signalOverrides, setSignalOverrides] = useState<Partial<SignalValues>>({});
   const [hoveredItem, setHoveredItem] = useState<RankedPlatformItem | null>(null);
@@ -78,6 +80,13 @@ export default function Demo() {
     setHoveredItem(item);
   }, []);
 
+  const streamingInsights: Record<string, string> = {
+    'bedtime': 'Dark S3 blocked. Bluey jumps #8 → #1. Calm content dominates.',
+    'solo-morning': 'Adult content unlocked. Kids content drops. Complex titles rise.',
+    'family-weekend': 'Everything available. Family content surfaces. Energy drives ranking.',
+    'focus-session': 'Short-form and background-friendly content rises. Long/complex drops.',
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -114,7 +123,7 @@ export default function Demo() {
             className={`flex-1 min-w-0 transition-opacity duration-150 ${transitioning ? 'opacity-0' : 'opacity-100'}`}
           >
             {/* Active context bar */}
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 mb-5">
+            <div className={`rounded-lg border px-4 py-3 mb-5 ${activePlatform === 'streaming' ? 'border-red-600/30 bg-red-600/5' : 'border-blue-500/20 bg-blue-500/5'}`}>
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-lg">{activeCtx.emoji}</span>
                 <span className="font-syne font-bold text-white/90">{activeCtx.label}</span>
@@ -124,13 +133,18 @@ export default function Demo() {
                 {activeCtx.signals.map((signal) => (
                   <span
                     key={signal.label}
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 font-dm-mono text-[10px] text-blue-300/80"
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${activePlatform === 'streaming' ? 'bg-red-600/10 border border-red-600/20 text-red-300/80' : 'bg-blue-500/10 border border-blue-500/20 text-blue-300/80'}`}
                   >
                     <span>{signal.emoji}</span>
                     {signal.label}
                   </span>
                 ))}
               </div>
+              {activePlatform === 'streaming' && streamingInsights[activeContext] && (
+                <div className="font-dm-mono text-[11px] text-white/50 mt-2 pt-2 border-t border-white/5">
+                  {streamingInsights[activeContext]}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -155,19 +169,7 @@ export default function Demo() {
                 </div>
                 <div className="space-y-2">
                   {rankedItems.map((item, i) => (
-                    <div key={item.id} className="relative">
-                      {/* Movement indicator */}
-                      {item.movement !== 0 && (
-                        <div className="absolute -left-5 top-1/2 -translate-y-1/2 font-dm-mono text-[10px] hidden lg:block">
-                          {item.movement > 0 ? (
-                            <span className="text-green-400">+{item.movement}</span>
-                          ) : (
-                            <span className="text-red-400">{item.movement}</span>
-                          )}
-                        </div>
-                      )}
-                      <ContentCard item={item} rank={i + 1} variant="after" onHover={handleHover} />
-                    </div>
+                    <ContentCard key={item.id} item={item} rank={i + 1} variant="after" onHover={handleHover} />
                   ))}
                 </div>
               </div>

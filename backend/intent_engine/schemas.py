@@ -5,6 +5,13 @@ from typing import Dict, List, Optional, Any, Tuple
 from pydantic import BaseModel, Field, ConfigDict
 
 
+class Domain(str, Enum):
+    """Supported domains for domain-agnostic ranking."""
+    STREAMING = "streaming"
+    RIDE_MATCHING = "ride_matching"
+    FOOD_DELIVERY = "food_delivery"
+
+
 class IntentType(str, Enum):
     """Categorized intent types for rules-based classification."""
     POPULAR = "popular"
@@ -13,6 +20,34 @@ class IntentType(str, Enum):
     COMPARISON = "comparison"
     TARGETED = "targeted"
     DISCOVERY = "discovery"
+    UNKNOWN = "unknown"
+
+
+class StreamingIntent(str, Enum):
+    """Intent types specific to the streaming domain."""
+    POPULAR = "popular"
+    EDUCATIONAL = "educational"
+    CALM = "calm"
+    DISCOVERY = "discovery"
+    UNKNOWN = "unknown"
+
+
+class RideIntent(str, Enum):
+    """Intent types specific to the ride matching domain."""
+    BUDGET = "budget"
+    COMFORT = "comfort"
+    PREMIUM = "premium"
+    URGENT = "urgent"
+    HABITUAL = "habitual"
+
+
+class FoodIntent(str, Enum):
+    """Intent types specific to the food delivery domain."""
+    COMFORT = "comfort"
+    HEALTHY = "healthy"
+    FAST = "fast"
+    DISCOVERY = "discovery"
+    HABITUAL = "habitual"
     UNKNOWN = "unknown"
 
 
@@ -124,9 +159,28 @@ class Item(CandidateItem):
     quality_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Quality score (0.0-1.0)")
 
 
+class MultiplierSet(BaseModel):
+    """Per-signal multipliers computed by a domain adapter."""
+    context: float = Field(default=1.0, description="Time-of-day / context alignment")
+    profile: float = Field(default=1.0, description="User profile fit")
+    urgency: float = Field(default=1.0, description="Urgency alignment")
+    cost: float = Field(default=1.0, description="Price / cost sensitivity")
+    prophecy: float = Field(default=1.0, description="Scheduled preference boost")
+
+
+class ScoreBreakdown(BaseModel):
+    """Full scoring breakdown for a domain-ranked item."""
+    base_score: float = Field(default=0.0)
+    multipliers: MultiplierSet = Field(default_factory=MultiplierSet)
+    diversity_penalty: float = Field(default=0.0)
+    final_score: float = Field(default=0.0)
+    blocked: bool = Field(default=False)
+    block_reason: Optional[str] = Field(default=None)
+
+
 class RankedItem(BaseModel):
     """Represents a ranked item with scoring details."""
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -142,7 +196,7 @@ class RankedItem(BaseModel):
             }
         }
     )
-    
+
     item: CandidateItem = Field(..., description="The candidate item")
     final_score: float = Field(default=0.0, ge=0.0, description="Final computed score after re-ranking")
     intent_score: float = Field(default=0.0, ge=0.0, description="Score based on intent matching")
@@ -154,6 +208,9 @@ class RankedItem(BaseModel):
     # Extended fields for ranking_engine.py compatibility
     rank: int = Field(default=0, ge=0, description="Rank position (1-based, 0 = unset)")
     score: float = Field(default=0.0, ge=0.0, description="Score from advanced ranking engine")
+    # Domain-agnostic fields (v3)
+    score_breakdown: Optional[ScoreBreakdown] = Field(default=None, description="Full multiplier breakdown")
+    status: str = Field(default="neutral", description="boosted | neutral | demoted | blocked")
 
 
 class LatencyBreakdown(BaseModel):
@@ -174,6 +231,15 @@ class RankingRequest(BaseModel):
         default=RankingMode.ADVANCED,
         description="Ranking pipeline: 'advanced' (IntentParser+RankingEngine) or 'simple' (IntentTranslator+IntentRanker)",
     )
+    # Domain-agnostic fields (v3)
+    domain: Optional[Domain] = Field(
+        default=None,
+        description="Domain for adapter-based ranking. None uses legacy engine.",
+    )
+    constraints: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Hard constraints (maturity_gate, surge_cap, allergens)",
+    )
 
 
 class RankingResponse(BaseModel):
@@ -185,3 +251,6 @@ class RankingResponse(BaseModel):
     intent: Intent = Field(
         default_factory=lambda: Intent(intent_type="unknown"), description="The parsed intent"
     )
+    # Domain-agnostic fields (v3)
+    domain: Optional[Domain] = Field(default=None, description="Domain used for ranking")
+    mode_used: Optional[RankingMode] = Field(default=None, description="Ranking mode that was used")

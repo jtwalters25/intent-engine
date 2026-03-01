@@ -27,7 +27,7 @@ const thumb = (
 // Types
 // ---------------------------------------------------------------------------
 
-export type PlatformKey = 'streaming' | 'music' | 'ecommerce';
+export type PlatformKey = 'streaming' | 'music' | 'ecommerce' | 'ride_matching' | 'food_delivery';
 
 export interface PlatformItem {
   id: string;
@@ -317,6 +317,116 @@ const ecommerceCatalog: PlatformItem[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Ride Matching catalog (8 items)
+// ---------------------------------------------------------------------------
+
+const rideMatchingCatalog: PlatformItem[] = [
+  {
+    id: 'uberx', title: 'UberX', genre: 'Standard', rating: '4 min',
+    runtime: '$12', tags: ['standard', 'affordable', 'everyday'],
+    engagementScore: 0.85, emoji: '🚗', thumbnail: thumb('🚗', '#1a1a2e', '#2a2a3e', 'UberX'),
+    maturity: 'family', calmScore: 0.5, complexity: 0.3,
+  },
+  {
+    id: 'comfort', title: 'Uber Comfort', genre: 'Comfort', rating: '6 min',
+    runtime: '$18', tags: ['comfort', 'spacious', 'quiet'],
+    engagementScore: 0.80, emoji: '🚙', thumbnail: thumb('🚙', '#1a2a1a', '#2a3a2a', 'Comfort'),
+    maturity: 'family', calmScore: 0.7, complexity: 0.5,
+  },
+  {
+    id: 'black', title: 'Uber Black', genre: 'Premium', rating: '8 min',
+    runtime: '$45', tags: ['premium', 'luxury', 'professional'],
+    engagementScore: 0.75, emoji: '🖤', thumbnail: thumb('🖤', '#0a0a0a', '#1a1a1a', 'Uber Black'),
+    maturity: 'adult', calmScore: 0.9, complexity: 0.8,
+  },
+  {
+    id: 'pool', title: 'UberX Share', genre: 'Shared', rating: '12 min',
+    runtime: '$7', tags: ['budget', 'shared', 'eco'],
+    engagementScore: 0.70, emoji: '👥', thumbnail: thumb('👥', '#1a1a3e', '#2a2a4e', 'Pool'),
+    maturity: 'family', calmScore: 0.3, complexity: 0.2,
+  },
+  {
+    id: 'green', title: 'Uber Green', genre: 'Eco', rating: '5 min',
+    runtime: '$14', tags: ['eco', 'electric', 'sustainable'],
+    engagementScore: 0.72, emoji: '🌱', thumbnail: thumb('🌱', '#0a2a0a', '#1a3a1a', 'Green'),
+    maturity: 'family', calmScore: 0.6, complexity: 0.4,
+  },
+  {
+    id: 'xl', title: 'UberXL', genre: 'XL', rating: '7 min',
+    runtime: '$22', tags: ['spacious', 'group', 'suv'],
+    engagementScore: 0.68, emoji: '🚐', thumbnail: thumb('🚐', '#2a1a0a', '#3a2a1a', 'XL'),
+    maturity: 'family', calmScore: 0.5, complexity: 0.4,
+  },
+  {
+    id: 'moto', title: 'Uber Moto', genre: 'Moto', rating: '3 min',
+    runtime: '$5', tags: ['fast', 'budget', 'solo'],
+    engagementScore: 0.60, emoji: '🏍️', thumbnail: thumb('🏍️', '#2e1a0a', '#3e2a1a', 'Moto'),
+    maturity: 'adult', calmScore: 0.1, complexity: 0.2,
+  },
+  {
+    id: 'shuttle', title: 'Uber Shuttle', genre: 'Shuttle', rating: '15 min',
+    runtime: '$4', tags: ['budget', 'commute', 'scheduled'],
+    engagementScore: 0.55, emoji: '🚌', thumbnail: thumb('🚌', '#1a1a0a', '#2a2a1a', 'Shuttle'),
+    maturity: 'family', calmScore: 0.4, complexity: 0.1,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Food Delivery catalog (8 items)
+// ---------------------------------------------------------------------------
+
+const foodDeliveryCatalog: PlatformItem[] = [
+  {
+    id: 'thai-bowl', title: 'Thai Comfort Bowl', genre: 'Thai', rating: '4.6★',
+    runtime: '25 min', tags: ['comfort', 'spicy', 'hearty'],
+    engagementScore: 0.88, emoji: '🍜', thumbnail: thumb('🍜', '#2a1a0a', '#3a2a1a', 'Thai Bowl'),
+    maturity: 'family', calmScore: 0.3, complexity: 0.4,
+  },
+  {
+    id: 'acai-bowl', title: 'Acai Health Bowl', genre: 'Health', rating: '4.8★',
+    runtime: '15 min', tags: ['healthy', 'fresh', 'superfood'],
+    engagementScore: 0.82, emoji: '🫐', thumbnail: thumb('🫐', '#1a0a2e', '#2a1a3e', 'Acai Bowl'),
+    maturity: 'family', calmScore: 0.7, complexity: 0.3,
+  },
+  {
+    id: 'burrito', title: 'Quick Burrito', genre: 'Mexican', rating: '4.3★',
+    runtime: '10 min', tags: ['fast', 'filling', 'budget'],
+    engagementScore: 0.79, emoji: '🌯', thumbnail: thumb('🌯', '#2a2a0a', '#3a3a1a', 'Burrito'),
+    maturity: 'family', calmScore: 0.2, complexity: 0.2,
+  },
+  {
+    id: 'ramen', title: 'Discovery Ramen', genre: 'Japanese', rating: '4.7★',
+    runtime: '30 min', tags: ['discovery', 'artisan', 'umami'],
+    engagementScore: 0.85, emoji: '🍜', thumbnail: thumb('🍜', '#1a0a0a', '#2e1a1a', 'Ramen'),
+    maturity: 'family', calmScore: 0.4, complexity: 0.6,
+  },
+  {
+    id: 'pizza', title: 'Margherita Pizza', genre: 'Italian', rating: '4.5★',
+    runtime: '20 min', tags: ['classic', 'comfort', 'family'],
+    engagementScore: 0.76, emoji: '🍕', thumbnail: thumb('🍕', '#2e1a0a', '#3e2a1a', 'Pizza'),
+    maturity: 'family', calmScore: 0.3, complexity: 0.2,
+  },
+  {
+    id: 'sushi', title: 'Sushi Platter', genre: 'Japanese', rating: '4.9★',
+    runtime: '35 min', tags: ['premium', 'fresh', 'date-night'],
+    engagementScore: 0.74, emoji: '🍣', thumbnail: thumb('🍣', '#0a1a2e', '#1a2a3e', 'Sushi'),
+    maturity: 'adult', calmScore: 0.6, complexity: 0.7,
+  },
+  {
+    id: 'caesar', title: 'Caesar Salad', genre: 'Health', rating: '4.2★',
+    runtime: '12 min', tags: ['healthy', 'light', 'quick'],
+    engagementScore: 0.65, emoji: '🥗', thumbnail: thumb('🥗', '#0a2a0a', '#1a3a1a', 'Caesar'),
+    maturity: 'family', calmScore: 0.8, complexity: 0.1,
+  },
+  {
+    id: 'tacos', title: 'Late Night Tacos', genre: 'Mexican', rating: '4.4★',
+    runtime: '18 min', tags: ['late-night', 'comfort', 'indulgent'],
+    engagementScore: 0.62, emoji: '🌮', thumbnail: thumb('🌮', '#2a0a1a', '#3a1a2a', 'Tacos'),
+    maturity: 'family', calmScore: 0.2, complexity: 0.2,
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Context presets per platform
 // ---------------------------------------------------------------------------
 
@@ -437,6 +547,130 @@ const ecommerceContexts: Record<string, PlatformContext> = {
   },
 };
 
+const rideMatchingSignals: SignalConfig[] = [
+  {
+    key: 'time', label: 'Time of Day', emoji: '🕐', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Late night', 0.25: 'Morning commute', 0.5: 'Midday', 0.75: 'Evening commute', 1: 'Weekend' },
+  },
+  {
+    key: 'viewer', label: 'Rider Profile', emoji: '👤', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Budget rider', 0.25: 'Standard', 0.5: 'Comfort', 0.75: 'Premium', 1: 'Executive' },
+  },
+  {
+    key: 'energy', label: 'Trip Urgency', emoji: '⚡', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'No rush', 0.25: 'Flexible', 0.5: 'Normal', 0.75: 'Hurry', 1: 'ASAP' },
+  },
+  {
+    key: 'device', label: 'Surge Sensitivity', emoji: '💰', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Price insensitive', 0.25: 'Flexible', 0.5: 'Moderate', 0.75: 'Sensitive', 1: 'Very sensitive' },
+  },
+  {
+    key: 'prophecy', label: 'Commute Pattern', emoji: '🔮', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Off', 0.5: 'Learned', 1: 'Full auto' },
+  },
+];
+
+const foodDeliverySignals: SignalConfig[] = [
+  {
+    key: 'time', label: 'Meal Time', emoji: '🕐', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Late night', 0.25: 'Breakfast', 0.5: 'Lunch', 0.75: 'Dinner', 1: 'Sunday evening' },
+  },
+  {
+    key: 'viewer', label: 'Dietary Profile', emoji: '🥗', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Health-first', 0.25: 'Balanced', 0.5: 'No preference', 0.75: 'Indulgent', 1: 'Comfort food' },
+  },
+  {
+    key: 'energy', label: 'Hunger Urgency', emoji: '⚡', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Browsing', 0.25: 'Peckish', 0.5: 'Hungry', 0.75: 'Starving', 1: 'Need food NOW' },
+  },
+  {
+    key: 'device', label: 'Price Sensitivity', emoji: '💰', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'No limit', 0.25: 'Flexible', 0.5: 'Moderate', 0.75: 'Budget-conscious', 1: 'Cheapest only' },
+  },
+  {
+    key: 'prophecy', label: 'Meal Routine', emoji: '🔮', min: 0, max: 1, step: 0.05,
+    valueLabels: { 0: 'Off', 0.5: 'Learned', 1: 'Full auto' },
+  },
+];
+
+const rideMatchingContexts: Record<string, PlatformContext> = {
+  'morning-commute': {
+    key: 'morning-commute', label: 'Morning Commute', emoji: '🌅',
+    subtitle: '7:30 AM — weekday commute to office',
+    signals: [
+      { emoji: '🕐', label: '7:30 AM' }, { emoji: '👤', label: 'Regular rider' },
+      { emoji: '⚡', label: 'On schedule' }, { emoji: '💰', label: 'Normal pricing' },
+    ],
+    defaults: { time: 0.25, viewer: 0.5, energy: 0.6, device: 0.5, prophecy: 0.9 },
+  },
+  'friday-night': {
+    key: 'friday-night', label: 'Friday Night Out', emoji: '🎉',
+    subtitle: '10:30 PM — heading out with friends',
+    signals: [
+      { emoji: '🕐', label: '10:30 PM' }, { emoji: '👤', label: 'Comfort preferred' },
+      { emoji: '⚡', label: 'No rush' }, { emoji: '💰', label: 'Surge likely' },
+    ],
+    defaults: { time: 0.0, viewer: 0.75, energy: 0.3, device: 0.25, prophecy: 0.0 },
+  },
+  'airport-run': {
+    key: 'airport-run', label: 'Airport Run', emoji: '✈️',
+    subtitle: '5:00 AM — flight to catch, can\'t be late',
+    signals: [
+      { emoji: '🕐', label: '5:00 AM' }, { emoji: '👤', label: 'Premium OK' },
+      { emoji: '⚡', label: 'ASAP' }, { emoji: '💰', label: 'Price flexible' },
+    ],
+    defaults: { time: 0.0, viewer: 0.75, energy: 1.0, device: 0.0, prophecy: 0.0 },
+  },
+  'weekend-errand': {
+    key: 'weekend-errand', label: 'Weekend Errand', emoji: '🛒',
+    subtitle: 'Saturday 2 PM — quick grocery run',
+    signals: [
+      { emoji: '🕐', label: '2:00 PM' }, { emoji: '👤', label: 'Budget OK' },
+      { emoji: '⚡', label: 'Flexible' }, { emoji: '💰', label: 'Budget-conscious' },
+    ],
+    defaults: { time: 1.0, viewer: 0.25, energy: 0.3, device: 0.75, prophecy: 0.0 },
+  },
+};
+
+const foodDeliveryContexts: Record<string, PlatformContext> = {
+  'sunday-comfort': {
+    key: 'sunday-comfort', label: 'Sunday Comfort', emoji: '🛋️',
+    subtitle: 'Sunday 6 PM — cozy evening comfort food',
+    signals: [
+      { emoji: '🕐', label: '6:00 PM' }, { emoji: '🥗', label: 'Indulgent' },
+      { emoji: '⚡', label: 'Relaxed' }, { emoji: '💰', label: 'Flexible' },
+    ],
+    defaults: { time: 1.0, viewer: 1.0, energy: 0.3, device: 0.25, prophecy: 0.7 },
+  },
+  'weekday-lunch': {
+    key: 'weekday-lunch', label: 'Weekday Lunch', emoji: '💼',
+    subtitle: 'Wednesday 12:30 PM — quick work lunch',
+    signals: [
+      { emoji: '🕐', label: '12:30 PM' }, { emoji: '🥗', label: 'Balanced' },
+      { emoji: '⚡', label: 'Hungry' }, { emoji: '💰', label: 'Moderate' },
+    ],
+    defaults: { time: 0.5, viewer: 0.25, energy: 0.75, device: 0.5, prophecy: 0.3 },
+  },
+  'healthy-reset': {
+    key: 'healthy-reset', label: 'Healthy Reset', emoji: '🥬',
+    subtitle: 'Monday 7 PM — new week, healthy start',
+    signals: [
+      { emoji: '🕐', label: '7:00 PM' }, { emoji: '🥗', label: 'Health-first' },
+      { emoji: '⚡', label: 'Normal' }, { emoji: '💰', label: 'Flexible' },
+    ],
+    defaults: { time: 0.75, viewer: 0.0, energy: 0.5, device: 0.25, prophecy: 0.5 },
+  },
+  'late-night-craving': {
+    key: 'late-night-craving', label: 'Late Night Craving', emoji: '🌙',
+    subtitle: 'Friday 11:30 PM — post-movie munchies',
+    signals: [
+      { emoji: '🕐', label: '11:30 PM' }, { emoji: '🥗', label: 'Comfort food' },
+      { emoji: '⚡', label: 'Starving' }, { emoji: '💰', label: 'Whatever' },
+    ],
+    defaults: { time: 0.0, viewer: 1.0, energy: 0.9, device: 0.0, prophecy: 0.0 },
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Platform definitions
 // ---------------------------------------------------------------------------
@@ -463,9 +697,23 @@ export const platforms: Record<PlatformKey, Platform> = {
     contextKeys: ['baby-shower', 'treat-yourself', 'family-holiday', 'home-office'],
     signalConfigs: baseSignalConfigs,
   },
+  ride_matching: {
+    key: 'ride_matching', label: 'Ride Matching', emoji: '🚗',
+    catalog: rideMatchingCatalog,
+    contexts: rideMatchingContexts,
+    contextKeys: ['morning-commute', 'friday-night', 'airport-run', 'weekend-errand'],
+    signalConfigs: rideMatchingSignals,
+  },
+  food_delivery: {
+    key: 'food_delivery', label: 'Food Delivery', emoji: '🍔',
+    catalog: foodDeliveryCatalog,
+    contexts: foodDeliveryContexts,
+    contextKeys: ['sunday-comfort', 'weekday-lunch', 'healthy-reset', 'late-night-craving'],
+    signalConfigs: foodDeliverySignals,
+  },
 };
 
-export const platformKeys: PlatformKey[] = ['streaming', 'music', 'ecommerce'];
+export const platformKeys: PlatformKey[] = ['streaming', 'music', 'ecommerce', 'ride_matching', 'food_delivery'];
 
 // ---------------------------------------------------------------------------
 // Multiplier-based scoring function

@@ -24,6 +24,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from intent_engine.schemas import Domain
+
 
 # ---------------------------------------------------------------------------
 # Time-context constants
@@ -156,6 +158,10 @@ class IntentSchedule(BaseModel):
         default=None,
         description="Optional identifier for correlation with overrides",
     )
+    domain: Optional[Domain] = Field(
+        default=None,
+        description="Domain this schedule applies to. None matches all domains.",
+    )
 
     def model_post_init(self, __context: Any) -> None:
         """Validate days_of_week values are in 0-6."""
@@ -271,15 +277,20 @@ class ProphecyAgent:
         self._schedules.append(schedule)
 
     def get_active_schedule(
-        self, current_time: datetime
+        self,
+        current_time: datetime,
+        domain: Optional[Domain] = None,
     ) -> Optional[IntentSchedule]:
         """Find the first active schedule for the given time.
 
         Checks enabled schedules in insertion order, considering time range
-        (with midnight-crossing support) and day-of-week filters.
+        (with midnight-crossing support), day-of-week filters, and optional
+        domain filtering.
 
         Args:
             current_time: The datetime to check.
+            domain: If provided, only match schedules with this domain or
+                domain=None (wildcard). If not provided, all schedules match.
 
         Returns:
             The first matching schedule, or None.
@@ -290,6 +301,11 @@ class ProphecyAgent:
         for schedule in self._schedules:
             if not schedule.enabled:
                 continue
+            # Domain filter: if caller specifies a domain, only match
+            # schedules that are domain-agnostic (None) or same domain.
+            if domain is not None and schedule.domain is not None:
+                if schedule.domain != domain:
+                    continue
             if not self._schedule_active_on_weekday(schedule, current_weekday):
                 continue
             if self._time_in_range(
