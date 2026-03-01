@@ -27,6 +27,11 @@ export default function PlatformTabs({ active, onSelect }: PlatformTabsProps) {
           >
             <span className="text-base">{platform.emoji}</span>
             <span className="hidden sm:inline">{platform.label}</span>
+            {key === 'streaming' && (
+              <span className="font-dm-mono text-[9px] bg-red-600/20 text-red-400 border border-red-600/30 px-1 py-0.5 rounded ml-1.5">
+                PILOT
+              </span>
+            )}
           </button>
         );
       })}
