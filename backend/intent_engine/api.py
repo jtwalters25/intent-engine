@@ -10,6 +10,8 @@ from .core.domain_engine import DomainRankingEngine
 from .adapters.streaming import StreamingAdapter
 from .adapters.ride_matching import RideMatchingAdapter
 from .adapters.food_delivery import FoodDeliveryAdapter
+from .adapters.music import MusicAdapter
+from .adapters.ecommerce import EcommerceAdapter
 import time
 
 app = FastAPI(
@@ -35,6 +37,8 @@ _domain_engine = DomainRankingEngine({
     Domain.STREAMING: StreamingAdapter(),
     Domain.RIDE_MATCHING: RideMatchingAdapter(),
     Domain.FOOD_DELIVERY: FoodDeliveryAdapter(),
+    Domain.MUSIC: MusicAdapter(),
+    Domain.ECOMMERCE: EcommerceAdapter(),
 })
 
 

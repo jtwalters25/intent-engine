@@ -16,7 +16,7 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 
 > Also reachable at the original URL, [dist-pied-one-60.vercel.app](https://dist-pied-one-60.vercel.app), which still works.
 
-**Python Backend:** Fully implemented with 237 passing tests
+**Python Backend:** Fully implemented with 274 passing tests
 
 > **Note:** The frontend uses mock data and is not connected to the backend API. Every vertical in the `/demo` UI runs the same deterministic ranking *client-side*; none call the Python backend. The backend runs locally via `uvicorn`.
 
@@ -52,17 +52,17 @@ The `/demo` page is an interactive demo showing the engine's re-ranking behavior
 
 ### Per-Vertical Status
 
-Honest status per vertical. **Functional** means it has a real catalog, 4 context presets, and 5 signal sliders that drive deterministic client-side scoring. All five verticals are functional in the demo; none are UI-only shells or placeholders. None are wired to the Python backend. The backend v3 domain engine independently ships adapters for three of them.
+Honest status per vertical. **Functional** means it has a real catalog, 4 context presets, and 5 signal sliders that drive deterministic client-side scoring. All five verticals are functional in the demo; none are UI-only shells or placeholders. None are wired to the Python backend (the demo scores client-side). The backend v3 domain engine now ships an adapter for all five.
 
 | Vertical | Demo UI | Backend adapter |
 |----------|---------|-----------------|
 | Streaming (`PILOT`) | Functional (client-side) | ✅ `adapters/streaming.py` |
-| Music | Functional (client-side) | ❌ none |
-| E-Commerce | Functional (client-side) | ❌ none |
+| Music | Functional (client-side) | ✅ `adapters/music.py` |
+| E-Commerce | Functional (client-side) | ✅ `adapters/ecommerce.py` |
 | Ride Matching | Functional (client-side) | ✅ `adapters/ride_matching.py` |
 | Food Delivery | Functional (client-side) | ✅ `adapters/food_delivery.py` |
 
-*No vertical is UI-only or a placeholder; the split above is only about whether a matching backend adapter also exists.*
+*No vertical is UI-only or a placeholder. The frontend demo still scores client-side; the backend adapters are exercised by the API and the test suite.*
 
 ### Scoring Model
 
@@ -178,8 +178,8 @@ intent-engine/
 │   │   ├── llm_adapter.py       # Optional LLM adapter (OFF by default)
 │   │   ├── api.py               # FastAPI REST API
 │   │   ├── core/                # v3 domain engine (adapter_protocol, domain_engine)
-│   │   └── adapters/            # Domain adapters: streaming, ride_matching, food_delivery
-│   ├── tests/                   # 237 tests, all passing
+│   │   └── adapters/            # Domain adapters: streaming, ride_matching, food_delivery, music, ecommerce
+│   ├── tests/                   # 274 tests, all passing
 │   ├── scripts/                 # Demo scripts
 │   └── demo_prophecy.py         # Prophecy Agent demo
 ├── frontend/                    # React UI prototype
@@ -319,6 +319,7 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 
 ## Recent Changes
 
+- **2026-07-22:** Added backend `DomainAdapter` implementations for **Music** (`adapters/music.py`) and **E-Commerce** (`adapters/ecommerce.py`), so all five demo verticals now have a matching backend adapter registered on the `/rank` domain engine. Test count grew to 274.
 - **2026-03-01:** Expanded the `/demo` from 3 verticals to 5. Added **Ride Matching** and **Food Delivery** tabs (8 items, 4 context presets, 5 domain-specific signal sliders each) and tagged **Streaming** with a `PILOT` badge. The backend gained a v3 domain engine (`core/`) with adapters for streaming, ride_matching, and food_delivery; the test count grew to 237.
 
 ## Related Work

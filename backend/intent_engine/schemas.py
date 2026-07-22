@@ -10,6 +10,8 @@ class Domain(str, Enum):
     STREAMING = "streaming"
     RIDE_MATCHING = "ride_matching"
     FOOD_DELIVERY = "food_delivery"
+    MUSIC = "music"
+    ECOMMERCE = "ecommerce"
 
 
 class IntentType(str, Enum):
@@ -48,6 +50,25 @@ class FoodIntent(str, Enum):
     FAST = "fast"
     DISCOVERY = "discovery"
     HABITUAL = "habitual"
+    UNKNOWN = "unknown"
+
+
+class MusicIntent(str, Enum):
+    """Intent types specific to the music domain."""
+    FOCUS = "focus"
+    CALM = "calm"
+    UPBEAT = "upbeat"
+    DISCOVERY = "discovery"
+    UNKNOWN = "unknown"
+
+
+class EcommerceIntent(str, Enum):
+    """Intent types specific to the e-commerce domain."""
+    GIFT = "gift"
+    BUDGET = "budget"
+    PREMIUM = "premium"
+    PRACTICAL = "practical"
+    DISCOVERY = "discovery"
     UNKNOWN = "unknown"
 
 
