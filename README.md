@@ -4,15 +4,19 @@ A deterministic, intent-aware re-ranking engine with a React prototype UI. Demon
 
 > **Prototype** — built to demonstrate systems thinking and backend architecture, not a production service.
 
+## Why I Built This
+
+As a parent, I spend real minutes every day filtering kids' content by hand, because streaming recommendations optimize for engagement, not for the intent I actually have in the moment ("it's bedtime," "keep it calm"). My engineering opinion is that this belongs in a deterministic, explainable re-ranking layer — not a black-box model: the same context should always produce the same, traceable ordering, and every score should decompose into signals a human can read. This repo is where I test that opinion against more than one domain.
+
 ## Live Demo
 
 **Interactive UI:** [https://dist-pied-one-60.vercel.app](https://dist-pied-one-60.vercel.app)
 - **Home:** Parent-intent wizard flow with kid browse, content detail, PIN gate
 - **`/demo`:** Interactive re-ranking demo with tweakable signals, multi-platform catalogs, and live scoring formula
 
-**Python Backend:** Fully implemented with 168 passing tests
+**Python Backend:** Fully implemented with 237 passing tests
 
-> **Note:** The frontend uses mock data and is not connected to the backend API. The backend runs locally via `uvicorn`.
+> **Note:** The frontend uses mock data and is not connected to the backend API. Every vertical in the `/demo` UI runs the same deterministic ranking *client-side* — none call the Python backend. The backend runs locally via `uvicorn`.
 
 ## What It Does
 
@@ -25,7 +29,7 @@ A deterministic, intent-aware re-ranking engine with a React prototype UI. Demon
 - Soft-constraint re-ranking (intent boosts items but never filters them)
 - Multiplier-based scoring with transparent formula display
 - Prophecy Agent for time-aware scheduling (auto-switch to bedtime mode at 8 PM)
-- Multi-platform support (Streaming, Music, E-Commerce)
+- Multi-vertical demo (Streaming · Music · E-Commerce · Ride Matching · Food Delivery)
 - Structured explanations for every ranking decision
 - Optional LLM fallback (off by default, env-var gated)
 
@@ -37,12 +41,24 @@ The `/demo` page is a portfolio-grade interactive demo showing the engine's re-r
 
 | Feature | Description |
 |---------|-------------|
-| **Platform Tabs** | Switch between Streaming, Music, and E-Commerce catalogs (8 items each) |
+| **Platform Tabs** | Switch between 5 verticals (Streaming · Music · E-Commerce · Ride Matching · Food Delivery), 8 items each. Streaming carries a `PILOT` badge in the UI |
 | **Context Presets** | 4 presets per platform (e.g., Bedtime, Solo Morning, Family Weekend, Focus Session) |
 | **Signal Sliders** | 5 tweakable signals: Time of Day, Viewer Profile, Energy Intent, Device, Prophecy Schedule |
 | **Before / After** | Side-by-side view showing engagement-only vs. intent-adjusted ranking |
 | **Scoring Formula** | Live code-style display showing the multiplier breakdown for any item |
 | **Prophecy Agent** | Mock scheduling indicator with countdown timer |
+
+### Per-Vertical Status
+
+All five verticals in the `/demo` UI are fully interactive with real deterministic client-side scoring (catalog + 4 context presets + 5 signal sliders each). None are wired to the Python backend. The backend v3 domain engine independently implements adapters for three of these domains.
+
+| Vertical | Demo UI | Backend adapter |
+|----------|---------|-----------------|
+| Streaming (`PILOT`) | ✅ functional (client-side) | ✅ `adapters/streaming.py` |
+| Music | ✅ functional (client-side) | ❌ none |
+| E-Commerce | ✅ functional (client-side) | ❌ none |
+| Ride Matching | ✅ functional (client-side) | ✅ `adapters/ride_matching.py` |
+| Food Delivery | ✅ functional (client-side) | ✅ `adapters/food_delivery.py` |
 
 ### Scoring Model
 
@@ -140,7 +156,7 @@ if (maturity === "adult" && viewer === "kids") → BLOCKED (score = 0)
 │ Prophecy │  └─────────┘ └────────────┘  │   breakdown)         │
 │ Agent    │                              │                       │
 └──────────┴──────────────────────────────┴───────────────────────┘
-                    ▲ PlatformTabs (Streaming · Music · E-Commerce)
+                    ▲ PlatformTabs (Streaming · Music · E-Commerce · Ride Matching · Food Delivery)
 ```
 
 ## Project Structure
@@ -156,8 +172,10 @@ intent-engine/
 │   │   ├── ranking_engine.py    # Multi-factor ranker with diversity
 │   │   ├── prophecy_agent.py    # Time-aware intent scheduling
 │   │   ├── llm_adapter.py       # Optional LLM adapter (OFF by default)
-│   │   └── api.py               # FastAPI REST API
-│   ├── tests/                   # 168 tests, all passing
+│   │   ├── api.py               # FastAPI REST API
+│   │   ├── core/                # v3 domain engine (adapter_protocol, domain_engine)
+│   │   └── adapters/            # Domain adapters: streaming, ride_matching, food_delivery
+│   ├── tests/                   # 237 tests, all passing
 │   ├── scripts/                 # Demo scripts
 │   └── demo_prophecy.py         # Prophecy Agent demo
 ├── frontend/                    # React UI prototype
@@ -165,14 +183,14 @@ intent-engine/
 │   │   ├── pages/
 │   │   │   └── Demo.tsx         # Interactive re-ranking demo page
 │   │   ├── components/demo/
-│   │   │   ├── PlatformTabs.tsx  # Streaming / Music / E-Commerce tabs
+│   │   │   ├── PlatformTabs.tsx  # 5 vertical tabs (Streaming PILOT / Music / E-Commerce / Ride / Food)
 │   │   │   ├── ContextSwitcher.tsx # Vertical context preset selector
 │   │   │   ├── SignalSliders.tsx  # 5 tweakable signal weight sliders
 │   │   │   ├── ScoringFormula.tsx # Live multiplier formula display
 │   │   │   ├── ProphecyAgent.tsx  # Scheduling indicator with countdown
 │   │   │   └── ContentCard.tsx    # Item card with score badge + hover
 │   │   └── data/
-│   │       ├── demoPlatforms.ts   # 3 catalogs + signal configs + ranking
+│   │       ├── demoPlatforms.ts   # 5 catalogs + signal configs + ranking
 │   │       └── demoContent.ts     # Legacy streaming-only data
 │   └── package.json
 ├── docs/
@@ -291,7 +309,19 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 **Music Platform — Wind Down** — The same engine works across verticals. Switching to Music with a "Wind Down" context: Sleep Stories Podcast stays #1 (high calm score + prophecy boost), but Morning Jazz moves up past Deep Focus — the time multiplier favors familiar, relaxed content over pure ambient. The architecture is platform-agnostic: swap the catalog and signal configs, keep the same scoring pipeline.
 
 ![E-Commerce Platform](docs/screenshots/10-platform-ecommerce.png)
-**E-Commerce — Baby Shower Gifts** — Intent-aware ranking isn't just for media. With viewer set to "kids" for gift-buying context: Organic Baby Blanket and Kids Art Kit jump to the top. Noise-Canceling Headphones and Smart Watch Pro are BLOCKED — adult-maturity items gated by the viewer signal. Board Game Collection (family-friendly) gets a +4 boost. The same multiplier formula drives it: `viewer(1.20)` for kids items vs. `viewer(0.00)` for adult items. One engine, three verticals, same transparent math.
+**E-Commerce — Baby Shower Gifts** — Intent-aware ranking isn't just for media. With viewer set to "kids" for gift-buying context: Organic Baby Blanket and Kids Art Kit jump to the top. Noise-Canceling Headphones and Smart Watch Pro are BLOCKED — adult-maturity items gated by the viewer signal. Board Game Collection (family-friendly) gets a +4 boost. The same multiplier formula drives it: `viewer(1.20)` for kids items vs. `viewer(0.00)` for adult items. One engine, the same transparent math across every vertical.
+
+> Screenshots above cover Streaming, Music, and E-Commerce. The Ride Matching and Food Delivery verticals were added later (see Recent Changes) and are best seen live in the demo.
+
+## Recent Changes
+
+- **2026-03-01** — Expanded the `/demo` from 3 verticals to 5: added **Ride Matching** and **Food Delivery** tabs (8 items, 4 context presets, 5 domain-specific signal sliders each), and tagged **Streaming** with a `PILOT` badge. Backend gained a v3 domain engine (`core/`) with adapters for streaming, ride_matching, and food_delivery; test count grew to 237.
+
+## Related Work
+
+- **"The Value of Personalized Recommendations: Evidence from Netflix"** ([Zielnicki, Aridor et al., 2025](https://arxiv.org/abs/2511.07280)) — the paper separates the *exposure* effect of recommendations (what gets surfaced) from the *targeting* effect (who gets what). Intent Engine's multiplier panel (`base × time × viewer × energy × device × prophecy`) makes that split visible in the UI: exposure lives in the `base` engagement score, while targeting is exactly the per-signal multipliers that reorder items on top of it.
+- **GenPage** ([Wang et al., 2026](https://arxiv.org/abs/2606.31031)) — Netflix's generative approach to assembling recommendation pages with a learned model. Intent Engine is the opposite bet: deterministic and explainable rather than generative — the same context always produces the same, traceable ordering.
+- **Honest limitation:** deterministic scoring gives no causal identification of targeting effects. Because every item is always scored and reordered — never randomly held out — the engine can show *what* the multipliers do but cannot measure their *causal lift*. That would require explicit exploration slots (randomized holdouts), which the engine does not currently have.
 
 ## About
 
