@@ -6,13 +6,15 @@ A deterministic, intent-aware re-ranking engine with a React prototype UI. It sh
 
 ## Why I Built This
 
-As a parent, I spend real time every day filtering kids' content by hand, because streaming recommendations optimize for engagement rather than the intent I have in the moment ("it's bedtime," "keep it calm"). My take as an engineer is that this belongs in a deterministic, explainable re-ranking layer instead of a model you can't inspect. The same context should always produce the same, traceable ordering, and every score should break down into signals a person can read. This repo is where I test that idea across more than one domain.
+As a parent, I spend real time every day filtering kids' content by hand, because streaming recommendations optimize for engagement rather than the intent I have in the moment ("it's bedtime," "keep it calm"). My take as an engineer is that this belongs in a deterministic, explainable re-ranking layer instead of a model you can't inspect: the same context should always produce the same, traceable ordering, and every score should break down into signals a person can read. This repo is where I test that idea across more than one domain.
 
 ## Live Demo
 
-**Interactive UI:** [https://dist-pied-one-60.vercel.app](https://dist-pied-one-60.vercel.app)
-- **Home:** Parent-intent wizard flow with kid browse, content detail, PIN gate
-- **`/demo`:** Interactive re-ranking demo with tweakable signals, multi-platform catalogs, and live scoring formula
+**Interactive UI:** [intentengine.vercel.app](https://intentengine.vercel.app)
+- **[`/demo`](https://intentengine.vercel.app/demo):** the multi-vertical re-ranking demo (5 verticals, tweakable signals, live scoring formula). This is the main thing to see.
+- **[Home](https://intentengine.vercel.app):** parent-intent wizard flow with kid browse, content detail, and PIN gate.
+
+> Also reachable at the original URL, [dist-pied-one-60.vercel.app](https://dist-pied-one-60.vercel.app), which still works.
 
 **Python Backend:** Fully implemented with 237 passing tests
 
@@ -50,15 +52,17 @@ The `/demo` page is an interactive demo showing the engine's re-ranking behavior
 
 ### Per-Vertical Status
 
-All five verticals in the `/demo` UI are fully interactive with real deterministic client-side scoring (catalog + 4 context presets + 5 signal sliders each). None are wired to the Python backend. The backend v3 domain engine independently implements adapters for three of these domains.
+Honest status per vertical. **Functional** means it has a real catalog, 4 context presets, and 5 signal sliders that drive deterministic client-side scoring. All five verticals are functional in the demo; none are UI-only shells or placeholders. None are wired to the Python backend. The backend v3 domain engine independently ships adapters for three of them.
 
 | Vertical | Demo UI | Backend adapter |
 |----------|---------|-----------------|
-| Streaming (`PILOT`) | ✅ functional (client-side) | ✅ `adapters/streaming.py` |
-| Music | ✅ functional (client-side) | ❌ none |
-| E-Commerce | ✅ functional (client-side) | ❌ none |
-| Ride Matching | ✅ functional (client-side) | ✅ `adapters/ride_matching.py` |
-| Food Delivery | ✅ functional (client-side) | ✅ `adapters/food_delivery.py` |
+| Streaming (`PILOT`) | Functional (client-side) | ✅ `adapters/streaming.py` |
+| Music | Functional (client-side) | ❌ none |
+| E-Commerce | Functional (client-side) | ❌ none |
+| Ride Matching | Functional (client-side) | ✅ `adapters/ride_matching.py` |
+| Food Delivery | Functional (client-side) | ✅ `adapters/food_delivery.py` |
+
+*No vertical is UI-only or a placeholder; the split above is only about whether a matching backend adapter also exists.*
 
 ### Scoring Model
 
@@ -320,7 +324,7 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 ## Related Work
 
 - **"The Value of Personalized Recommendations: Evidence from Netflix"** ([Zielnicki, Aridor et al., 2025](https://arxiv.org/abs/2511.07280)) separates the *exposure* effect of recommendations (what gets surfaced) from the *targeting* effect (who gets what). Intent Engine's multiplier panel (`base × time × viewer × energy × device × prophecy`) makes that split visible in the UI: exposure lives in the `base` engagement score, and targeting is the set of per-signal multipliers that reorder items on top of it.
-- **GenPage** ([Wang et al., 2026](https://arxiv.org/abs/2606.31031)) is Netflix's generative approach to assembling recommendation pages with a learned model. Intent Engine takes the opposite approach: deterministic and explainable rather than generative, where the same context always produces the same, traceable ordering.
+- **"GenPage: Towards End-to-End Generative Homepage Construction at Netflix"** ([Netflix Technology Blog, 2026](https://netflixtechblog.com/genpage-towards-end-to-end-generative-homepage-construction-at-netflix-77146fba8a08)) assembles the homepage with a learned generative model. Intent Engine takes the opposite approach: deterministic and explainable rather than generative, where the same context always produces the same, traceable ordering.
 - **Honest limitation:** deterministic scoring gives no causal identification of targeting effects. Because every item is always scored and reordered, never randomly held out, the engine can show *what* the multipliers do but cannot measure their *causal lift*. That would require explicit exploration slots (randomized holdouts), which the engine does not currently have.
 
 ## About
