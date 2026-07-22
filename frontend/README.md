@@ -1,6 +1,6 @@
-# Netflix Kids – Parent-Intent Mode
+# Netflix Kids: Parent-Intent Mode
 
-A conceptual prototype demonstrating intent-aware content discovery for children's streaming. This project explores how parental intent signals—time of day, energy preferences, and learning goals—can be integrated into recommendation systems without sacrificing safety, performance, or engineering simplicity.
+A conceptual prototype demonstrating intent-aware content discovery for children's streaming. This project explores how parental intent signals (time of day, energy preferences, and learning goals) can be integrated into recommendation systems without sacrificing safety, performance, or engineering simplicity.
 
 > **Note:** This is a design prototype intended to demonstrate systems thinking and backend architecture. It is not a production service.
 
@@ -34,15 +34,15 @@ Current parental controls in streaming services focus primarily on **restriction
 
 While necessary, these controls don't help parents with a more nuanced need: **intent-based guidance**. Parents often have contextual goals:
 
-- "It's bedtime—I want something calm, not exciting."
-- "They've been watching all day—show them something educational."
-- "It's a rainy Saturday afternoon—active and fun is fine."
+- "It's bedtime, I want something calm, not exciting."
+- "They've been watching all day; show them something educational."
+- "It's a rainy Saturday afternoon; active and fun is fine."
 
 These intent signals are currently invisible to recommendation systems.
 
 ### What This Prototype Demonstrates
 
-This project implements a **Parent-Intent Re-Ranking Layer**—a conceptual addition to existing recommendation infrastructure that:
+This project implements a **Parent-Intent Re-Ranking Layer**, a conceptual addition to existing recommendation infrastructure that:
 
 1. Infers session context (time of day, child profile)
 2. Accepts optional parent overrides (energy level, learning focus)
@@ -50,20 +50,21 @@ This project implements a **Parent-Intent Re-Ranking Layer**—a conceptual addi
 4. Maintains all existing safety guarantees
 
 The prototype includes two experiences:
-- **Parent UI** (`/`) — Intent setup wizard, curated home, kid browse, content detail
-- **Interactive Demo** (`/demo`) — Tweakable signal sliders with multi-platform catalogs showing real-time re-ranking
+- **Parent UI** (`/`): intent setup wizard, curated home, kid browse, content detail
+- **Interactive Demo** (`/demo`): tweakable signal sliders with multi-platform catalogs showing real-time re-ranking
 
 ---
 
 ## Interactive Demo (`/demo`)
 
-The `/demo` page is a portfolio-grade interactive demonstration of the re-ranking engine.
+The `/demo` page is an interactive demonstration of the re-ranking engine.
 
 ### Layout
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│          PlatformTabs (Streaming · Music · E-Commerce)          │
+│  PlatformTabs · 5 verticals: Streaming, Music, E-Commerce,      │
+│  Ride Matching, Food Delivery (Streaming carries a PILOT badge)  │
 ├──────────┬──────────────────────────────┬───────────────────────┤
 │  LEFT    │         CENTER               │        RIGHT          │
 │          │                              │                       │
@@ -83,7 +84,7 @@ The `/demo` page is a portfolio-grade interactive demonstration of the re-rankin
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| `PlatformTabs` | `components/demo/PlatformTabs.tsx` | Switch between 3 platform catalogs |
+| `PlatformTabs` | `components/demo/PlatformTabs.tsx` | Switch between 5 platform catalogs |
 | `ContextSwitcher` | `components/demo/ContextSwitcher.tsx` | Vertical preset selector (4 per platform) |
 | `SignalSliders` | `components/demo/SignalSliders.tsx` | 5 tweakable signal weights with color-coded fills |
 | `ScoringFormula` | `components/demo/ScoringFormula.tsx` | Live code-style multiplier breakdown |
@@ -94,9 +95,13 @@ The `/demo` page is a portfolio-grade interactive demonstration of the re-rankin
 
 | Platform | Items | Context Presets |
 |----------|-------|-----------------|
-| **Streaming** | Dark S3, Outer Range, Inception, The Office, Merlin Chronicles, Lion King, Planet Earth III, Bluey S4 | Bedtime, Solo Morning, Family Weekend, Focus Session |
+| **Streaming** (`PILOT`) | Dark S3, Outer Range, Inception, The Office, Merlin Chronicles, Lion King, Planet Earth III, Bluey S4 | Bedtime, Solo Morning, Family Weekend, Focus Session |
 | **Music** | Sleep Stories Podcast, Deep Focus Playlist, Morning Jazz, True Crime Weekly, Kids Sing-Along, Lo-Fi Study, Pop Hits, Classical for Baby | Wind Down, Morning Commute, Family Playtime, Deep Work |
 | **E-Commerce** | Noise-Canceling Headphones, Smart Watch Pro, Baby Blanket, LEGO Set, Espresso Machine, Art Kit, Desk Mat, Board Games | Baby Shower, Treat Yourself, Family Holiday, Home Office |
+| **Ride Matching** | UberX, Uber Comfort, Uber Black, UberX Share, Uber Green, UberXL, Uber Moto, Uber Shuttle | Morning Commute, Friday Night Out, Airport Run, Weekend Errand |
+| **Food Delivery** | Thai Comfort Bowl, Acai Health Bowl, Quick Burrito, Discovery Ramen, Margherita Pizza, Sushi Platter, Caesar Salad, Late Night Tacos | Sunday Comfort, Weekday Lunch, Healthy Reset, Late Night Craving |
+
+The five signals keep the same scoring math across verticals but are relabeled to fit each domain. Ride Matching uses Rider Profile, Trip Urgency, Surge Sensitivity, and Commute Pattern; Food Delivery uses Meal Time, Dietary Profile, Hunger Urgency, Price Sensitivity, and Meal Routine.
 
 ### Scoring Formula
 
@@ -118,16 +123,16 @@ Each multiplier is computed from the item's metadata (calmScore, maturity, compl
 ### Screenshots
 
 ![Demo Overview](../docs/screenshots/07-demo-overview.png)
-**Streaming / Bedtime** — Same 8-item catalog, two columns: engagement-only (left) vs. intent-adjusted (right). At bedtime with a kids viewer profile, Bluey S4 jumps from #8 to #1. Dark Season 3 (TV-MA) drops to the bottom via the viewer multiplier. Signal sliders on the right update rankings in real-time. The scoring formula box decomposes the #1 item's score into its multiplier chain.
+**Streaming / Bedtime.** Same 8-item catalog, two columns: engagement-only (left) vs. intent-adjusted (right). At bedtime with a kids viewer profile, Bluey S4 jumps from #8 to #1. Dark Season 3 (TV-MA) drops to the bottom via the viewer multiplier. Signal sliders on the right update rankings live. The scoring formula box breaks the #1 item's score into its multiplier chain.
 
 ![Scoring Formula](../docs/screenshots/08-scoring-formula.png)
-**Transparent Math** — Every ranking decision is fully decomposable: `base(0.58) x time(0.91) x viewer(1.20) x energy(0.90) x device(1.10) x prophecy(1.32) = 0.83`. No black-box ML — each multiplier maps to a single signal slider. An engineer can trace any ranking anomaly back to exactly which signal caused it.
+**Scoring formula.** Every ranking decision breaks down into its parts: `base(0.58) x time(0.91) x viewer(1.20) x energy(0.90) x device(1.10) x prophecy(1.32) = 0.83`. Each multiplier maps to a single signal slider, so an engineer can trace any ranking anomaly back to the signal that caused it.
 
 ![Music Platform](../docs/screenshots/09-platform-music.png)
-**Music / Wind Down** — The same engine works across verticals. Sleep Stories Podcast holds #1 (high calm score + prophecy boost). Morning Jazz moves up past Deep Focus via the time multiplier. The architecture is platform-agnostic: swap the catalog and signal configs, keep the same scoring pipeline.
+**Music / Wind Down.** The same engine works across verticals. Sleep Stories Podcast holds #1 (high calm score plus prophecy boost). Morning Jazz moves up past Deep Focus via the time multiplier. The pipeline is platform-agnostic: swap the catalog and signal configs and keep the same scoring.
 
 ![E-Commerce](../docs/screenshots/10-platform-ecommerce.png)
-**E-Commerce / Baby Shower** — Intent-aware ranking beyond media. With viewer set to "kids" for gift-buying: Baby Blanket and Art Kit jump to the top. Headphones and Smart Watch are BLOCKED — adult-maturity items gated by the viewer signal at `viewer(0.00)`. One engine, three verticals, same transparent math.
+**E-Commerce / Baby Shower.** Intent-aware ranking beyond media. With viewer set to "kids" for gift-buying, Baby Blanket and Art Kit jump to the top. Headphones and Smart Watch are BLOCKED as adult-maturity items gated by the viewer signal at `viewer(0.00)`. The same formula drives every vertical.
 
 ---
 
@@ -142,7 +147,7 @@ Hard constraints (age ratings, content blocks) are applied **before** any rankin
 The system auto-infers reasonable defaults from context (time of day, child age). Parents can override, but shouldn't have to.
 
 ### 3. Soft Intent Constraints
-Intent preferences apply **weights**, not gates. A "calm bedtime" session still surfaces some variety—it doesn't hard-block all energetic content.
+Intent preferences apply **weights**, not gates. A "calm bedtime" session still surfaces some variety; it doesn't hard-block all energetic content.
 
 ### 4. Graceful Degradation
 If intent services fail, the system falls back to standard Kids recommendations. No failure mode should leave a child staring at an error screen.
@@ -372,7 +377,7 @@ Intent-Aware Ranking (primary)
 - **Parent UI Flow**: Intent setup wizard, curated home, kid browse, content detail
 - **Interactive Demo**: Multi-platform re-ranking with tweakable signals and live formula
 - **Visual Design**: Netflix-inspired dark theme with time-based ambient gradients
-- **Mock Data**: 24 items across 3 platform catalogs with intent-relevant metadata
+- **Mock Data**: 40 items across 5 platform catalogs with intent-relevant metadata
 
 ### What This Prototype Does Not Include
 

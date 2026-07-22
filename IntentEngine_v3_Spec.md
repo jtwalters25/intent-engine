@@ -2,15 +2,15 @@
 
 ## Problem
 
-Ranked surfaces are everywhere — streaming libraries, ride options, food delivery feeds, driver incentive displays. Every one of them shares the same flaw: they optimize for platform engagement, not user context.
+Ranked surfaces are everywhere: streaming libraries, ride options, food delivery feeds, driver incentive displays. Every one of them shares the same flaw: they optimize for platform engagement, not user context.
 
-The result is friction. A parent can't tell Netflix "it's bedtime, wind them down." A commuter can't tell Uber "I take UberX every weekday at 8am — stop showing me Pool." A hungry user can't tell Uber Eats "it's Sunday, I want comfort food, not my usual."
+The result is friction. A parent can't tell Netflix "it's bedtime, wind them down." A commuter can't tell Uber "I take UberX every weekday at 8am, stop showing me Pool." A hungry user can't tell Uber Eats "it's Sunday, I want comfort food, not my usual."
 
 Current solutions address restriction, not guidance. They can't express intent.
 
-> "It's bedtime — show something calm, not exciting."
-> "It's my morning commute — surface my usual ride, fast."
-> "They've been watching all day — show something educational."
+> "It's bedtime, show something calm, not exciting."
+> "It's my morning commute, surface my usual ride, fast."
+> "They've been watching all day, show something educational."
 
 These signals are invisible to existing recommendation infrastructure.
 
@@ -18,16 +18,16 @@ These signals are invisible to existing recommendation infrastructure.
 
 ## Solution: Domain-Agnostic Intent-Aware Re-Ranking
 
-Intent Engine is a rules-first, deterministic re-ranking layer that sits between content retrieval and presentation — across any ranked surface. Context is expressed once. The system adapts. Explainably. Without ML.
+Intent Engine is a rules-first, deterministic re-ranking layer that sits between content retrieval and presentation, across any ranked surface. Context is expressed once. The system adapts. Explainably. Without ML.
 
 **Core properties:**
-- **Deterministic** — same input, same output, every time
-- **Domain-agnostic** — one engine, pluggable domain adapters
-- **Soft constraints** — intent re-ranks, never filters
-- **Explainable** — every score has a human-readable reason and decomposable formula
-- **Rules first** — no LLM dependency; LLM is optional and OFF by default
-- **Safe defaults** — unknown input degrades gracefully to base-score ordering
-- **Hard constraints first** — maturity gates, surge caps, allergen blocks apply before any ranking logic
+- **Deterministic:** same input, same output, every time
+- **Domain-agnostic:** one engine, pluggable domain adapters
+- **Soft constraints:** intent re-ranks, never filters
+- **Explainable:** every score has a human-readable reason and decomposable formula
+- **Rules first:** no LLM dependency; LLM is optional and OFF by default
+- **Safe defaults:** unknown input degrades gracefully to base-score ordering
+- **Hard constraints first:** maturity gates, surge caps, allergen blocks apply before any ranking logic
 
 ---
 
@@ -226,7 +226,7 @@ IntentSchedule(
 
 **Ride matching examples:**
 ```python
-# Morning commute — surface UberX fast, suppress Pool
+# Morning commute: surface UberX fast, suppress Pool
 IntentSchedule(
     domain=Domain.ride_matching,
     time_context=TimeContext.MORNING,
@@ -236,7 +236,7 @@ IntentSchedule(
     day_filter=[Mon, Tue, Wed, Thu, Fri]
 )
 
-# Friday late night — suppress surge-sensitive, boost premium tolerance
+# Friday late night: suppress surge-sensitive, boost premium tolerance
 IntentSchedule(
     domain=Domain.ride_matching,
     time_context=TimeContext.LATE_NIGHT,
@@ -291,7 +291,7 @@ intent-engine/
 │   │   │   ├── ranking_engine.py    # Domain-agnostic multi-factor ranker
 │   │   │   ├── prophecy_agent.py    # Domain-aware scheduling
 │   │   │   ├── llm_adapter.py       # Optional LLM (OFF by default)
-│   │   │   └── api.py               # FastAPI — domain routed via request
+│   │   │   └── api.py               # FastAPI, domain routed via request
 │   │   ├── adapters/
 │   │   │   ├── streaming.py         # Netflix domain adapter
 │   │   │   ├── ride_matching.py     # Uber ride adapter
@@ -330,7 +330,7 @@ intent-engine/
 
 ## The Architectural Claim
 
-> Most recommendation systems are domain-specific implementations of the same problem: rank a set of items by relevance to a user's current context. Intent Engine treats this as a primitive — a composable re-ranking layer with pluggable domain adapters, deterministic scoring, and explainability at every layer.
+> Most recommendation systems are domain-specific implementations of the same problem: rank a set of items by relevance to a user's current context. Intent Engine treats this as a primitive, a composable re-ranking layer with pluggable domain adapters, deterministic scoring, and explainability at every layer.
 >
 > The same engine that helps a parent wind their kids down at bedtime helps a commuter surface their usual ride at 8am and helps a tired user find comfort food on a Sunday evening.
 >
@@ -338,4 +338,4 @@ intent-engine/
 
 ---
 
-> Built by [Jeremiah Walters](https://www.linkedin.com/in/jeremiahwalters/) ([GitHub](https://github.com/jtwalters25)) — exploring how thoughtful systems design can improve ranked surfaces everywhere.
+> Built by [Jeremiah Walters](https://www.linkedin.com/in/jeremiahwalters/) ([GitHub](https://github.com/jtwalters25)), exploring how thoughtful systems design can improve ranked surfaces everywhere.
