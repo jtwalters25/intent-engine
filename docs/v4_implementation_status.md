@@ -2,14 +2,16 @@
 
 ## Current status
 
-Phase 2, **deterministic rule-based intent planning**, is implemented on top of
-the accepted Phase 1 contracts and validation foundation. The new code remains
-additive and isolated under `intent_engine.agentic`; it does not call the
-ranking engine, inspect, score, or select candidates, alter domain-adapter
-behavior, or change an existing API.
+Phase 3A, **deterministic intent-vocabulary normalization**, is implemented on
+top of the accepted Phase 1 contracts and Phase 2 planner. Overall Phase 3 is
+still in progress: no orchestrator or execution integration exists yet. The
+new code remains additive and isolated under `intent_engine.agentic`; it does
+not call the ranking engine or adapters, inspect, score, or select candidates,
+alter domain-adapter behavior, or change an existing API.
 
-Verification completed with 510 passing backend tests (274 pre-existing, 161
-Phase 1, and 75 Phase 2 tests) plus the existing passing frontend test.
+Verification completed with 654 passing backend tests (274 pre-existing, 161
+Phase 1, 75 Phase 2, and 144 Phase 3A tests) plus the existing passing frontend
+test.
 
 ## Completed scope
 
@@ -49,6 +51,20 @@ Phase 1, and 75 Phase 2 tests) plus the existing passing frontend test.
   recorded in plan assumptions; missing information without a safe default
   fails closed.
 - Routed both the draft and final planner result through the Phase 1 validator.
+- Added a pure streaming `PlanIntentNormalizer` that maps canonical plan
+  vocabulary into immutable resolved adapter intent, hard-constraint, and
+  observational mappings. It does not import or execute adapters or ranking.
+- Added a separate `ProphecyContextNormalizer` with explicit scale handling:
+  `energyLevel` 0-to-100 becomes canonical `energy` 0-to-1; canonical `energy`
+  and the existing custom-schedule `energy_level` spelling remain 0-to-1.
+- Canonicalized the three maturity constraint aliases into the adapter's
+  `maturity_gate`, but only through the separately supplied authoritative hard
+  constraint channel. Soft, inferred, malformed, or conflicting authority
+  fails closed.
+- Kept `tone` and `runtime_preference` observable without assigning them an
+  invented ranking effect.
+- Restricted Phase 3A hard-gate output to `maturity_gate=kids`, the only
+  maturity value the current streaming adapter actually enforces.
 
 ## Files added
 
@@ -81,6 +97,24 @@ Modified:
 No ranking, domain-engine, adapter, Prophecy Agent, LLM, API, or frontend code
 was modified for Phase 2.
 
+## Phase 3A files added or modified
+
+Added:
+
+- `backend/intent_engine/agentic/normalizer.py`
+- `backend/tests/agentic/test_normalizer.py`
+
+Modified:
+
+- `backend/intent_engine/agentic/__init__.py`
+- `backend/intent_engine/agentic/capabilities.py`
+- `backend/intent_engine/agentic/schemas.py`
+- `docs/IntentEngine_v4_Spec.md`
+- `docs/v4_implementation_status.md`
+
+No orchestrator, ranking engine, adapter, Prophecy Agent, LLM, API, or frontend
+code was modified for Phase 3A.
+
 ## Tests added
 
 The Phase 1 tests cover:
@@ -107,10 +141,11 @@ Test results:
 
 - Phase 1 agentic tests: **161 passed**.
 - Phase 2 planner tests: **75 passed**.
-- All agentic tests: **236 passed**.
-- Full backend suite: **510 passed** (274 existing plus 236 agentic).
+- Phase 3A normalization tests: **144 passed**.
+- All agentic tests: **380 passed**.
+- Full backend suite: **654 passed** (274 existing plus 380 agentic).
 - Frontend suite: **1 passed**.
-- Combined repository test total: **511 passed**.
+- Combined repository test total: **655 passed**.
 - Python bytecode compilation: **passed**.
 
 The Phase 2 tests cover all five objectives, deterministic output and IDs,
@@ -120,6 +155,15 @@ malformed interpretations, canonical vocabulary enforcement, authoritative
 constraint preservation, interpreted constraint non-authority, Phase 1
 validation of every returned plan, absence of a candidate input, monotonic
 wind-down/high-energy progressions, and plan-step limits.
+
+The Phase 3A tests cover canonical-to-adapter signal mappings, all five Phase 2
+objectives, observational-signal isolation, unknown and candidate-selection
+signals, signal ranges and types, deterministic and immutable results,
+maturity alias canonicalization, authoritative-channel separation, duplicate
+and conflicting constraints, fail-closed unsupported maturity semantics,
+Prophecy scale conversion and ambiguity, current Prophecy defaults, and the
+absence of candidate, clock, adapter, and authority inputs at the wrong
+boundaries.
 
 ## Phase 2 default behavior
 
@@ -151,6 +195,37 @@ safe default for them.
   not proof of authority—the separate trusted input channel is the authority
   boundary.
 
+## Phase 3A normalization behavior
+
+`PlanIntentNormalizer` accepts a caller-resolved canonical intent mapping. It
+does not select an active step or merge plan state; Phase 3B must merge
+`IntentPlan.current_state` with the active step, with step values winning,
+before calling this boundary. That precedence applies only to ordinary intent
+signals. Separately authenticated profile context must override protected
+profile fields such as `viewer` so interpreted data cannot impersonate the
+active profile.
+
+| Canonical input | Phase 3A output |
+|---|---|
+| `energy` | resolved `energy_level` on the same 0-to-1 scale |
+| `viewer` | resolved `viewer_profile` |
+| `intent_type` | resolved `intent_type` |
+| `time_bucket` | resolved `time_bucket` |
+| `tone` | observational only |
+| `runtime_preference` | observational only |
+| trusted maturity aliases | hard `maturity_gate`, currently only `kids` |
+
+The output is a resolved adapter intent intended for a future direct scoring
+seam; it is not raw input for `StreamingAdapter.resolve_intent`. Maturity policy
+does not manufacture or override `viewer_profile`, because doing so would turn
+a hard policy into an unintended soft ranking signal.
+
+`ProphecyContextNormalizer` is a separate inbound boundary. It converts
+`energyLevel / 100` and explicitly recognizes the existing 0-to-1 `energy` and
+`energy_level` forms. Multiple spellings in one payload fail as ambiguous. All
+other fields remain observational, so Prophecy data cannot create hard
+constraints or timestamps.
+
 ## Deviations and clarifications from the proposed spec
 
 - **Domain type:** Contract `domain` fields use the repository's existing
@@ -170,8 +245,8 @@ safe default for them.
   compared.
 - **Canonical V4 signal names:** The capability registry uses V4-facing signal
   names, including streaming `energy` and `viewer`. It is separate from the
-  current adapters, whose names differ. Translation into adapter input is
-  intentionally deferred.
+  current adapters, whose names differ. Pure streaming translation now exists;
+  runtime integration remains deferred.
 - **Separate capability registry:** Existing `DomainAdapter` implementations do
   not expose supported signal names, types, or ranges. Phase 1 therefore uses
   an injectable, immutable registry instead of extending the runtime adapter
@@ -204,6 +279,22 @@ safe default for them.
 - **Interpretation remains out of scope:** Phase 2 accepts a validated
   `ContextInterpretation`; it does not convert natural language into one. The
   Phase 2 build-sequence wording was clarified accordingly.
+- **Resolved, not raw, adapter intent:** The proposed spec did not distinguish
+  adapter input stages. Phase 3A emits the vocabulary consumed by
+  `compute_multipliers`, not the raw vocabulary consumed by `resolve_intent`.
+  This preserves the already-planned `intent_type` rather than asking the
+  adapter to infer it again.
+- **Explicit lossy translation:** `tone` and `runtime_preference` are retained
+  as observational signals because the streaming adapter does not consume
+  them. A round trip is intentionally not promised.
+- **Narrow executable safety semantics:** Phase 1 capability metadata accepts
+  four maturity labels, but the current streaming hard gate implements only
+  `kids`. Phase 3A rejects other authoritative maturity values instead of
+  claiming that an unenforced policy was applied.
+- **Prophecy compatibility alias:** In addition to the spec's camel-case
+  0-to-100 `energyLevel`, Phase 3A explicitly supports the existing custom
+  schedule spelling `energy_level` on the 0-to-1 scale. Supplying more than one
+  spelling fails rather than guessing precedence or scale.
 
 ## Technical debt and risks
 
@@ -214,28 +305,48 @@ safe default for them.
 - **Energy naming and scale:** The V4 contract uses `energy` on a 0-to-1 scale;
   domain adapters currently use `energy_level`, also as an implied 0-to-1
   value; Prophecy Agent templates use camel-case `energyLevel` on a 0-to-100
-  scale. The Phase 3 boundary will need an explicit, tested conversion.
+  scale. Phase 3A now converts these explicitly, but runtime Prophecy and
+  ranking integration remain unimplemented.
 - **Constraint translation:** V4 represents constraints as typed objects, while
   existing adapters receive dictionaries such as `maturity_gate`,
-  `block_explicit`, `surge_cap`, and `allergens`. Policy-authoritative
-  translation and merge behavior remains undefined and must precede execution.
-  In particular, future translation must pass only authoritative hard
-  constraints to adapter hard-gate dictionaries; soft constraints must never
-  become hard gates accidentally.
+  `block_explicit`, `surge_cap`, and `allergens`. Phase 3A implements only the
+  streaming maturity aliases and only from the separate authoritative channel.
+  Other domains remain undefined and must be reviewed before execution.
 - **Capability versus consumption:** Some canonical V4 signals, such as
   streaming `tone` and `runtime_preference`, are valid plan vocabulary but are
-  not consumed by the current adapter. Phase 3 must either translate them to a
-  supported deterministic effect or explicitly leave them observational.
+  not consumed by the current adapter. Phase 3A leaves them explicitly
+  observational; Phase 4 traces must distinguish observed from applied data.
 - **Planner/adapter vocabulary boundary:** The planner emits canonical V4
   `energy` (0-to-1) and `viewer`, while streaming adapters consume
   `energy_level` and `viewer_profile`, and Prophecy Agent emits `energyLevel`
-  on a 0-to-100 scale. Direct wiring would silently drop or mis-scale intent.
+  on a 0-to-100 scale. The pure conversion is implemented, but direct wiring
+  through the current ranking request would still silently drop intent.
+- **Missing resolved-intent engine seam:** `DomainRankingEngine.rank()` rebuilds
+  raw intent from the fixed legacy `Intent` model, which cannot carry
+  `energy_level`, `viewer_profile`, or `time_bucket`.
+  `StreamingAdapter.resolve_intent()` also ignores an incoming `intent_type`.
+  Phase 3C needs an additive resolved-intent execution method while preserving
+  the existing `rank()` path and ranking formulas.
+- **Current-state merge is not implemented:** Most Phase 2 steps inherit
+  `viewer` from `IntentPlan.current_state`. Phase 3B must merge plan state with
+  the active step before normalization or kids wind-down intent would silently
+  use the adapter's family default.
+- **Partial maturity semantics:** The capability registry permits `kids`,
+  `teen`, `family`, and `adult`, while the streaming adapter only enforces the
+  `kids` gate. Phase 3A fails closed for the other values; later domain-policy
+  work must define them before they can execute.
 - **Local objective vocabulary:** Phase 2 objective aliases are intentionally
   local to the planner. If a later deterministic context interpreter also owns
   aliases, the vocabulary must be centralized to prevent drift.
 - **Constraint provenance enforcement:** Phase 2 separates trusted constraints
-  by API channel, but only a future orchestrator can authenticate the profile,
-  session, system, or domain-policy source before calling the planner.
+  by API channel, but only a future API/application policy resolver can
+  authenticate the profile, session, system, or domain-policy source. The
+  orchestrator must accept, preserve, and revalidate that already-authenticated
+  channel; it must not treat a `source` enum label as proof.
+- **Normalized result provenance:** The exported normalized-result dataclasses
+  provide immutable value containers, not authentication. Phase 3C must accept
+  them only from the in-process orchestrator/normalizer path and must never
+  deserialize them from an external request as proof of policy authority.
 - **Streaming-only behavior:** The objective names are broadly useful, but
   reusing the current templates for other domains would invent unreviewed
   semantics. Domain-specific templates remain necessary.
@@ -247,39 +358,40 @@ safe default for them.
   `step_id`, although events such as `PLAN_CANCELLED` and `SESSION_ENDED` may be
   plan-scoped. This should be resolved before the outcome API is introduced.
 
-## Recommended Phase 3
+## Recommended Phase 3B and 3C
 
-Implement a narrow deterministic `IntentOrchestrator` plus a pure,
-domain-specific `PlanIntentNormalizer` boundary. Its outbound normalization
-should consume only a validated active `IntentStep` and trusted hard
-constraints, then produce the existing adapter input vocabulary without
-ranking or policy decisions. For the initial streaming path it should:
+Phase 3B should implement only the deterministic `IntentOrchestrator` core:
 
-1. map canonical `energy` directly to adapter `energy_level` on the 0-to-1
-   scale;
-2. map canonical `viewer` to adapter `viewer_profile` without weakening a
-   trusted maturity gate;
-3. deliberately translate `tone` and `runtime_preference` into supported
-   adapter signals, or reject/record them as observational rather than silently
-   dropping them;
-4. translate only separately authenticated hard constraints into adapter hard
-   gates such as `maturity_gate`.
+1. accept trusted `now`, trusted active-profile context, and separately
+   authenticated authoritative constraints;
+2. revalidate the plan at execution time and stop expired plans;
+3. select the latest step whose offset is active at `now` without modifying the
+   plan;
+4. merge validated `plan.current_state` with the active step, with step values
+   taking precedence for ordinary signals and trusted profile context taking
+   final precedence for protected fields such as `viewer`;
+5. call `PlanIntentNormalizer` with that resolved canonical context; and
+6. expose deterministic results for T+0, T+25, T+50, boundary, pre-start, and
+   expired-plan tests.
 
-Add a separate inbound context-normalization function for Prophecy Agent data:
-`energyLevel / 100 -> energy`, with bounds checks, before planning. Do not put
-that scale conversion in `PlanIntentNormalizer` or ranking.
+Phase 3C should add a narrow `DomainRankingEngine` execution seam that consumes
+`NormalizedAdapterInput.resolved_intent` and `hard_constraints` directly. Keep
+the existing `rank(RankingRequest)` behavior unchanged. The new seam may
+delegate the existing hard-gate, multiplier, diversity, and response-building
+logic, but it must not duplicate or change scoring formulas. Integrate Prophecy
+only after its output crosses `ProphecyContextNormalizer`.
 
-Keep the normalizer pure, injectable, capability-checked, and covered by
-round-trip/scale/boundary tests. Then have the orchestrator select the active
-step by trusted time, validate again, normalize, and delegate candidate scoring
-unchanged to the existing deterministic `DomainRankingEngine`. Do not add an
-LLM planner in Phase 3.
+Phase 3 is complete only when the multi-step streaming plan executes across
+simulated time with deterministic replay and authoritative maturity-gate tests.
+Do not add tracing, APIs, frontend work, outcome loops, or an LLM planner in
+Phase 3.
 
 ## Intentionally deferred
 
 - Context-interpreter behavior and probabilistic interpretation.
-- Orchestration, active-step selection, normalization, and integration with
-  Prophecy Agent, `DomainRankingEngine`, or the existing rankers (Phase 3).
+- Orchestration, active-step selection, current-state merging, and integration
+  with Prophecy Agent or `DomainRankingEngine` (Phases 3B and 3C).
+- Normalization for music, e-commerce, ride matching, or food delivery.
 - Full execution-trace creation and strongly typed trace internals (Phase 4).
 - `/v4/plan`, `/v4/execute`, `/v4/observe`, plan retrieval, and trace retrieval
   APIs (Phase 5).

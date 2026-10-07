@@ -38,7 +38,7 @@ def _is_timezone_aware(value: datetime) -> bool:
     return value.utcoffset() is not None
 
 
-def _validate_json_value(value: Any, *, path: str = "value") -> None:
+def validate_json_value(value: Any, *, path: str = "value") -> None:
     """Reject values that cannot originate from or serialize to strict JSON."""
     pending = [(value, path, 0)]
     visited_items = 0
@@ -116,7 +116,7 @@ class GoalRequest(AgenticContract):
     @field_validator("explicit_context")
     @classmethod
     def context_must_be_json_compatible(cls, value: Dict[str, Any]) -> Dict[str, Any]:
-        _validate_json_value(value, path="explicit_context")
+        validate_json_value(value, path="explicit_context")
         return value
 
 
@@ -133,7 +133,7 @@ class IntentConstraint(AgenticContract):
     def value_must_be_present_and_json_compatible(cls, value: Any) -> Any:
         if value is None:
             raise ValueError("constraint value must not be null")
-        _validate_json_value(value, path="constraint value")
+        validate_json_value(value, path="constraint value")
         return value
 
 
@@ -158,7 +158,7 @@ class ContextInterpretation(AgenticContract):
     def context_maps_must_be_json_compatible(
         cls, value: Dict[str, Any]
     ) -> Dict[str, Any]:
-        _validate_json_value(value, path="interpretation context")
+        validate_json_value(value, path="interpretation context")
         return value
 
     @field_validator("assumptions", "missing_information")
@@ -181,7 +181,7 @@ class IntentStep(AgenticContract):
     @field_validator("intent", "completion_condition")
     @classmethod
     def dynamic_fields_must_be_json_compatible(cls, value: Any) -> Any:
-        _validate_json_value(value, path="intent step")
+        validate_json_value(value, path="intent step")
         return value
 
 
@@ -215,7 +215,7 @@ class IntentPlan(AgenticContract):
     def state_must_be_json_compatible(
         cls, value: Dict[str, Any]
     ) -> Dict[str, Any]:
-        _validate_json_value(value, path="plan state")
+        validate_json_value(value, path="plan state")
         return value
 
     @field_validator("assumptions")
@@ -256,7 +256,7 @@ class OutcomeEvent(AgenticContract):
     @field_validator("metadata")
     @classmethod
     def metadata_must_be_json_compatible(cls, value: Dict[str, Any]) -> Dict[str, Any]:
-        _validate_json_value(value, path="outcome metadata")
+        validate_json_value(value, path="outcome metadata")
         return value
 
 
@@ -281,7 +281,7 @@ class ExecutionTrace(AgenticContract):
     )
     @classmethod
     def trace_data_must_be_json_compatible(cls, value: Any) -> Any:
-        _validate_json_value(value, path="execution trace")
+        validate_json_value(value, path="execution trace")
         return value
 
     @field_validator("latency", mode="before")
