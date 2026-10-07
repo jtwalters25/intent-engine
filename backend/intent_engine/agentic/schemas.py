@@ -140,7 +140,7 @@ class IntentConstraint(AgenticContract):
 class ContextInterpretation(AgenticContract):
     """Structured interpretation of a GoalRequest before planning."""
 
-    objective: Optional[str] = Field(..., min_length=1)
+    objective: str = Field(..., min_length=1)
     entities: Dict[str, Any]
     explicit_constraints: List[IntentConstraint]
     inferred_context: Dict[str, Any]
