@@ -162,7 +162,8 @@ def _intent_types(*values: str) -> ValueRule:
 def _profile_constraints(*, explicit: bool = False) -> Mapping[str, ValueRule]:
     constraints = {
         # The first two names occur in the V4 spec; maturity_gate is the
-        # existing adapter-facing name.  Translation remains a later phase.
+        # existing adapter-facing name.  The Phase 3A streaming normalizer
+        # canonicalizes these aliases before execution integration.
         "viewer_safety": MATURITY,
         "viewer_maturity": MATURITY,
         "maturity_gate": MATURITY,
@@ -176,8 +177,8 @@ DEFAULT_DOMAIN_CAPABILITIES: Mapping[Domain, DomainCapabilities] = MappingProxyT
     {
         Domain.STREAMING: DomainCapabilities(
             signals={
-                # V4 canonical names.  Phase 3 must explicitly translate
-                # energy -> energy_level and viewer -> viewer_profile.
+                # V4 canonical names.  Phase 3A translates these into the
+                # resolved streaming adapter vocabulary.
                 "energy": UNIT_INTERVAL,
                 "viewer": VIEWER,
                 "tone": FREE_TEXT,

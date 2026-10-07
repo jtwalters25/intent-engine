@@ -614,7 +614,8 @@ Is the plan structurally valid?
 
 ### Signal validation
 
-Are requested signals supported by the selected domain adapter?
+Are requested signals supported by the canonical domain capabilities, and are
+they classified explicitly as applied or observational during normalization?
 
 ### Range validation
 
@@ -710,6 +711,73 @@ invalid agent response
 
 ---
 
+# 14A. Deterministic Adapter Normalization
+
+Before orchestration can execute a validated plan, canonical V4 vocabulary
+must cross an explicit deterministic boundary:
+
+```text
+validated canonical execution context
++ separately authenticated hard constraints
+        ↓
+PlanIntentNormalizer
+        ↓
+NormalizedAdapterInput
+  - domain
+  - resolved_intent
+  - hard_constraints
+  - observational_signals
+```
+
+`resolved_intent` is the vocabulary consumed by adapter scoring methods such
+as `compute_multipliers`. It is not raw input for `resolve_intent`.
+
+For the initial streaming pilot:
+
+| Canonical V4 value | Normalized result |
+|---|---|
+| `energy` | `resolved_intent.energy_level`, unchanged on the 0-to-1 scale |
+| `viewer` | `resolved_intent.viewer_profile` |
+| `intent_type` | `resolved_intent.intent_type` |
+| `time_bucket` | `resolved_intent.time_bucket` |
+| `tone` | `observational_signals.tone` |
+| `runtime_preference` | `observational_signals.runtime_preference` |
+| trusted `viewer_safety`, `viewer_maturity`, or `maturity_gate` | `hard_constraints.maturity_gate` |
+
+The normalizer MUST NOT select an active step, read the clock, inspect
+candidates, call adapters, rank, authenticate source labels, invent a missing
+signal, or derive new policy. Authority comes from the separate trusted
+constraint channel, not from `source` or `hard` fields embedded in plan data.
+Soft and interpreted constraints never enter `hard_constraints`.
+
+`viewer_profile` and `maturity_gate` remain independent. A maturity policy
+MUST NOT be converted into a soft viewer-ranking signal. The streaming adapter
+currently implements only the `maturity_gate=kids` hard-gate behavior, so other
+maturity values must fail closed until their execution semantics exist.
+
+Phase 3B owns the deterministic merge of `IntentPlan.current_state` with the
+active step, with the active step overriding ordinary intent signals. This is
+necessary because most Phase 2 steps inherit `viewer` from plan state rather
+than repeating it. Authenticated profile context is a separate trusted input
+and overrides protected profile fields such as `viewer`; neither interpreted
+plan state nor a step may impersonate the active profile.
+
+Prophecy input uses its own inbound normalization. Finite, non-boolean
+`energyLevel` values on the 0-to-100 scale become canonical `energy` on the
+0-to-1 scale. Canonical `energy` and the existing `energy_level` custom-schedule
+spelling are explicit 0-to-1 forms; simultaneous energy spellings are
+ambiguous and must fail. Other bounded JSON fields remain quarantined as
+observable metadata until a later phase deliberately consumes them. Prophecy
+normalization cannot produce authoritative constraint or time outputs;
+similarly named input fields remain observational.
+
+The current `DomainRankingEngine.rank(RankingRequest)` path cannot carry
+adapter-specific resolved fields, and `StreamingAdapter.resolve_intent` does
+not honor an explicit `intent_type`. Phase 3C therefore requires an additive
+resolved-intent execution seam while preserving existing `rank()` behavior.
+
+---
+
 # 15. Intent Orchestrator
 
 Introduce:
@@ -749,20 +817,32 @@ Instead:
 ```python
 step = orchestrator.active_step(plan, now)
 
-context = orchestrator.resolve_context(step)
+context = orchestrator.resolve_context(plan, step)
 
-result = domain_engine.rank(
+normalized = normalizer.normalize(
     domain=plan.domain,
-    context=context,
+    canonical_intent=context,
+    authoritative_constraints=trusted_constraints,
+)
+
+result = domain_engine.rank_resolved(  # proposed additive Phase 3C seam
+    domain=plan.domain,
+    resolved_intent=normalized.resolved_intent,
+    constraints=normalized.hard_constraints,
     candidates=candidates,
 )
 ```
+
+The actual repository component is `DomainRankingEngine`; the older
+`RankingEngine` remains unchanged. The illustrated `rank_resolved` method does
+not exist yet and belongs to Phase 3C.
 
 ---
 
 # 16. Prophecy Agent V4
 
-The existing Prophecy Agent evolves into the temporal execution component.
+The existing Prophecy Agent remains a source of temporal schedule/context
+signals. `IntentOrchestrator` owns active-step selection.
 
 V3:
 
@@ -774,11 +854,12 @@ time
 V4:
 
 ```text
-IntentPlan
-+
-time
-+
-observed state
+time + schedule
+→ ProphecyContextNormalizer
+→ advisory canonical context
+
+IntentPlan + trusted time
+→ IntentOrchestrator
 → active IntentStep
 ```
 
@@ -802,9 +883,9 @@ energy=.30
 energy=.10
 ```
 
-The Prophecy Agent MUST NOT create arbitrary ranking changes.
-
-It activates previously validated intent steps.
+The Prophecy Agent MUST NOT create arbitrary ranking changes or activate plan
+steps directly. The orchestrator may use separately normalized Prophecy context
+without granting it policy or timestamp authority.
 
 ---
 
@@ -1242,7 +1323,9 @@ Agent output cannot modify ranking implementation.
 
 ### Invariant 5
 
-Unknown signals are rejected.
+Unknown applied or execution signals are rejected. Unrecognized metadata may
+only be quarantined observationally and cannot affect execution without a
+reviewed capability mapping.
 
 ### Invariant 6
 
@@ -1292,9 +1375,11 @@ backend/
 └── intent_engine/
     ├── agentic/
     │   ├── __init__.py
+    │   ├── capabilities.py
     │   ├── schemas.py
     │   ├── context_interpreter.py
     │   ├── planner.py
+    │   ├── normalizer.py
     │   ├── validator.py
     │   ├── orchestrator.py
     │   ├── outcome_evaluator.py
@@ -1341,7 +1426,7 @@ expired plan rejected
 hard constraint cannot be weakened
 unsupported signal fails
 LLM garbage fails safely
-missing optional field receives default
+missing required semantic field fails; planner-owned defaults remain explicit
 ```
 
 ### Orchestrator
@@ -1490,9 +1575,14 @@ Example:
 ```python
 assert plan.objective == "wind_down"
 
-assert plan.constraints.viewer == "kids"
+assert any(
+    constraint.type in {"viewer_safety", "viewer_maturity", "maturity_gate"}
+    and constraint.value == "kids"
+    and constraint.hard
+    for constraint in plan.constraints
+)
 
-assert plan.steps[-1].intent.energy < plan.steps[0].intent.energy
+assert plan.steps[-1].intent["energy"] < plan.steps[0].intent["energy"]
 ```
 
 ---
@@ -1674,19 +1764,45 @@ constraints enter the planner separately from interpreted constraints.
 
 ## Phase 3 — Orchestrator
 
+### Phase 3A — Normalization boundary
+
+Implement:
+
+```text
+PlanIntentNormalizer
+ProphecyContextNormalizer
+```
+
+Keep normalization pure, streaming-only, and unwired from ranking. The plan
+normalizer is capability-checked; the Prophecy boundary validates energy
+aliases/scales and quarantines all other bounded metadata observationally.
+
+**Phase 3A done:** canonical streaming and Prophecy energy vocabularies are
+normalized deterministically; observational signals and authoritative hard
+constraints remain separated. Runtime execution is not yet wired.
+
+### Phase 3B — Orchestrator core
+
 Implement:
 
 ```text
 IntentOrchestrator
 ```
 
-Integrate with:
+Own trusted-time active-step selection, expiration, execution-time
+revalidation, and the deterministic current-state/active-step merge.
+
+### Phase 3C — Deterministic execution integration
+
+Integrate additively with:
 
 ```text
 ProphecyAgent
-DomainEngine
-RankingEngine
+DomainRankingEngine
 ```
+
+Preserve the existing `DomainRankingEngine.rank()` path and all ranking
+behavior.
 
 **Done:**
 
