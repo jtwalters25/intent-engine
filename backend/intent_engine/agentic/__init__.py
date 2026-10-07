@@ -17,6 +17,14 @@ from intent_engine.agentic.schemas import (
     IntentStep,
     OutcomeEvent,
 )
+from intent_engine.agentic.planner import (
+    DEFAULT_HORIZON_MINUTES,
+    RULE_BASED_PLANNER_VERSION,
+    SUPPORTED_OBJECTIVES,
+    IntentPlanner,
+    PlanningError,
+    RuleBasedIntentPlanner,
+)
 from intent_engine.agentic.validator import (
     IntentPlanValidator,
     PlanValidationError,
@@ -36,10 +44,16 @@ __all__ = [
     "IntentConstraint",
     "IntentPlan",
     "IntentPlanValidator",
+    "IntentPlanner",
     "IntentStep",
     "OutcomeEvent",
     "PlanValidationError",
     "PlanValidator",
+    "PlanningError",
+    "RuleBasedIntentPlanner",
+    "RULE_BASED_PLANNER_VERSION",
+    "SUPPORTED_OBJECTIVES",
+    "DEFAULT_HORIZON_MINUTES",
     "ValidationIssue",
     "ValueKind",
     "ValueRule",
