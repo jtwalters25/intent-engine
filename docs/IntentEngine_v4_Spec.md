@@ -778,10 +778,14 @@ observable metadata until a later phase deliberately consumes them. Prophecy
 normalization cannot produce authoritative constraint or time outputs;
 similarly named input fields remain observational.
 
-The current `DomainRankingEngine.rank(RankingRequest)` path cannot carry
+The legacy `DomainRankingEngine.rank(RankingRequest)` path cannot carry
 adapter-specific resolved fields, and `StreamingAdapter.resolve_intent` does
-not honor an explicit `intent_type`. Phase 3C therefore requires an additive
-resolved-intent execution seam while preserving existing `rank()` behavior.
+not honor an explicit `intent_type`. Phase 3C therefore adds a keyword-only
+`rank_resolved` seam for adapter-ready intent, orchestrator-validated hard
+constraints, and candidates while preserving existing `rank()` behavior. The
+seam bypasses `resolve_intent` and delegates to the same private hard-gate,
+multiplier, diversity, explanation, and response-building implementation used
+by `rank()`; ranking formulas are not duplicated.
 
 ---
 
@@ -814,8 +818,8 @@ This avoids a caller validating at one time and executing a separately mutated
 plan or constraint set. Constraint input is copied and revalidated once before
 both plan validation and normalization. Aware timestamps are compared as UTC
 instants so daylight-saving folds and gaps cannot change step or expiration
-semantics. Ranking execution is added in Phase 3C; stateful
-`observe`, `advance`, and `complete` behavior remains Phase 8 work.
+semantics. Ranking execution is provided by the additive Phase 3C engine seam;
+stateful `observe`, `advance`, and `complete` behavior remains Phase 8 work.
 
 The orchestrator does NOT rank candidates itself.
 
@@ -829,7 +833,7 @@ prepared = orchestrator.prepare_execution(
     authoritative_constraints=trusted_constraints,
 )
 
-result = domain_engine.rank_resolved(  # proposed additive Phase 3C seam
+result = domain_engine.rank_resolved(
     domain=prepared.domain,
     resolved_intent=prepared.normalized_input.resolved_intent,
     constraints=prepared.normalized_input.hard_constraints,
@@ -838,8 +842,16 @@ result = domain_engine.rank_resolved(  # proposed additive Phase 3C seam
 ```
 
 The actual repository component is `DomainRankingEngine`; the older
-`RankingEngine` remains unchanged. The illustrated `rank_resolved` method does
-not exist yet and belongs to Phase 3C.
+`RankingEngine` remains unchanged. `rank_resolved` is limited to the reviewed
+streaming path, verifies adapter/domain registration coherence, takes bounded
+deep snapshots of the supplied mappings and candidates, and provides fresh
+isolated values to each adapter call. It rejects malformed, cyclic, or
+post-construction-invalid boundary data and never receives plan, clock,
+profile-authentication, observational, Prophecy, or LLM inputs. Its returned
+legacy response metadata projects the resolved `intent_type`, reports
+`advanced` mode, and records zero intent-parsing latency. Those compatibility
+fields do not create execution authority, and the seam does not authenticate
+the provenance of its inputs.
 
 ---
 
@@ -1783,7 +1795,8 @@ aliases/scales and quarantines all other bounded metadata observationally.
 
 **Phase 3A done:** canonical streaming and Prophecy energy vocabularies are
 normalized deterministically; observational signals and authoritative hard
-constraints remain separated. Runtime execution is not yet wired.
+constraints remain separated. Phase 3A itself stays unwired from ranking;
+Phase 3C consumes its output through the separate engine seam.
 
 ### Phase 3B — Orchestrator core
 
@@ -1811,16 +1824,26 @@ candidates, rank, call adapters, or read the system clock.
 Integrate additively with:
 
 ```text
-ProphecyAgent
 DomainRankingEngine
 ```
 
 Preserve the existing `DomainRankingEngine.rank()` path and all ranking
-behavior.
+behavior. Execute only the already-normalized fields from
+`PreparedPlanExecution.normalized_input`; observational fields remain outside
+ranking.
+
+Prophecy remains behind `ProphecyContextNormalizer`. Runtime Prophecy merging
+is deferred until precedence relative to plan state, the active step, and the
+authenticated profile is explicit; Phase 3C does not invent that policy.
 
 **Done:**
 
-A multi-step plan can execute across simulated time.
+`DomainRankingEngine.rank_resolved` bypasses intent re-resolution and reuses
+the legacy deterministic scoring implementation. A streaming wind-down plan
+executes at simulated T+0, T+25, and T+50 with deterministic replay, while the
+separately authoritative kids maturity gate blocks adult candidates at every
+step. The existing `rank()` path, `/rank` API, adapters, ranking formulas,
+Prophecy Agent, and frontend remain unchanged.
 
 ---
 

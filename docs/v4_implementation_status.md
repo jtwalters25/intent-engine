@@ -2,18 +2,20 @@
 
 ## Current status
 
-Phase 3B, **deterministic orchestration preparation**, is implemented on top of
-the accepted Phase 1 contracts, Phase 2 planner, and Phase 3A normalization
-boundary. Overall Phase 3 is still in progress: the orchestrator prepares an
-active plan step for execution, but the Phase 3C ranking-engine seam does not
-exist yet. The new code remains additive and isolated under
-`intent_engine.agentic`; it does not call the ranking engine or adapters,
-inspect, score, or select candidates, alter domain-adapter behavior, or change
-an existing API.
+The Phase 3 deterministic plan-to-ranking path and its multi-step execution
+criterion are complete for the streaming pilot. Phase 3C adds an internal,
+keyword-only `DomainRankingEngine.rank_resolved` seam that consumes the
+adapter-ready intent and authoritative hard constraints prepared by the
+orchestrator. The legacy
+`rank(RankingRequest)` path now delegates only its scoring stage to the same
+private implementation; its intent resolution, response metadata, hard gates,
+scoring formulas, diversity behavior, adapters, and `/rank` API remain
+unchanged. The original Phase 3 heading also named Prophecy integration; that
+runtime merge is an explicit, safety-motivated deviation until context
+precedence is specified.
 
-Verification completed with 721 passing backend tests (274 pre-existing, 161
-Phase 1, 75 Phase 2, 144 Phase 3A, and 67 Phase 3B tests) plus the existing
-passing frontend test.
+Verification completed with 765 passing backend tests (274 pre-V4, 447 through
+Phase 3B, and 44 Phase 3C tests) plus the existing passing frontend test.
 
 ## Completed scope
 
@@ -93,6 +95,17 @@ passing frontend test.
 - Normalized aware timestamp comparison and duration arithmetic to UTC instants
   so plan creation, expiration, and step selection remain correct across
   daylight-saving gaps and folds.
+- Added `DomainRankingEngine.rank_resolved` for already-normalized intent and
+  authoritative hard constraints. It bypasses `resolve_intent`, accepts only
+  the streaming domain in this phase, takes bounded deep snapshots of its
+  mappings and candidates, supplies pristine per-call adapter inputs, and
+  accepts no plan, clock, profile, observational, Prophecy, or LLM inputs.
+- Extracted the existing hard-gate, multiplier-chain, diversity, explanation,
+  and response-building code into one private implementation used by both the
+  legacy and resolved paths. No ranking formula was duplicated or changed.
+- Demonstrated planner-to-orchestrator-to-ranking execution for the streaming
+  wind-down plan at T+0, T+25, and T+50 with deterministic replay and an
+  authoritative kids maturity gate applied at every step.
 
 ## Files added
 
@@ -162,6 +175,24 @@ Modified:
 No ranking engine, domain engine, adapter, Prophecy Agent, LLM, API, or
 frontend code was modified for Phase 3B.
 
+## Phase 3C files added or modified
+
+Added:
+
+- `backend/tests/core/test_domain_engine_resolved.py`
+- `backend/tests/agentic/test_execution_integration.py`
+
+Modified:
+
+- `backend/intent_engine/core/domain_engine.py`
+- `backend/intent_engine/agentic/normalizer.py` (documentation only)
+- `backend/intent_engine/agentic/orchestrator.py` (documentation only)
+- `docs/IntentEngine_v4_Spec.md`
+- `docs/v4_implementation_status.md`
+
+No adapter, legacy `RankingEngine`, Prophecy Agent, API, schema, planner, LLM,
+or frontend behavior was modified for Phase 3C.
+
 ## Tests added
 
 The Phase 1 tests cover:
@@ -191,10 +222,12 @@ Test results:
 - Phase 3A normalization tests: **144 passed**.
 - Phase 3B orchestrator tests: **65 passed**.
 - Phase 3B cross-cutting time-ordering regression tests: **2 passed**.
-- All agentic tests: **447 passed**.
-- Full backend suite: **721 passed** (274 existing plus 447 agentic).
+- Phase 3C resolved-ranking tests: **42 passed**.
+- Phase 3C execution-integration tests: **2 passed**.
+- All agentic tests: **449 passed**.
+- Full backend suite: **765 passed** (721 prior plus 44 Phase 3C tests).
 - Frontend suite: **1 passed**.
-- Combined repository test total: **722 passed**.
+- Combined repository test total: **766 passed**.
 - Python bytecode compilation: **passed**.
 
 The Phase 2 tests cover all five objectives, deterministic output and IDs,
@@ -223,6 +256,21 @@ replay, one-pass constraint snapshots, forged authority rejection,
 profile-policy coherence, injected capability registries, daylight-saving
 fold/gap behavior, and the absence of candidate, ranker, adapter, Prophecy, or
 system-clock inputs at the orchestration boundary.
+
+The Phase 3C tests prove that resolved intent bypasses `resolve_intent`, exact
+hard constraints reach the adapter gate, caller inputs are deeply snapshotted
+without mutation, malformed or cyclic boundary shapes fail closed, and the
+legacy path still resolves exactly once. Adversarial adapters cannot delete a
+gate for a later candidate, mutate later intent, or leak item mutation into the
+caller or response. Tests also reject post-construction-invalid candidates,
+unreviewed non-streaming execution, mismatched adapter registration,
+non-boolean gate results, invalid multiplier outputs, non-finite candidate
+values, and score overflow. Both entry points share identical ranked-item
+outputs for equivalent intent while preserving the multiplier product,
+hard-gate behavior, explanations, stable ties, and global repeated-key
+diversity behavior. End-to-end tests execute a streaming plan at T+0, T+25,
+and T+50, reproduce identical ranked results, quarantine observational
+signals, and verify that an adult candidate is marked blocked at every step.
 
 ## Phase 2 default behavior
 
@@ -264,6 +312,11 @@ safe default for them.
   state and step intent. The orchestrator does not authenticate the mapping;
   that remains an application-boundary responsibility. A trusted kids profile
   without a separately authoritative kids maturity gate fails closed.
+- **Resolved ranking:** `rank_resolved` is an in-process deterministic scoring
+  seam, not an authentication boundary. Its mappings must come from the
+  orchestrator's normalized result, and its hard-constraint dictionary retains
+  only the authority established by the separate application-owned constraint
+  channel. The method is not exposed through an API.
 
 ## Phase 3A normalization behavior
 
@@ -283,7 +336,7 @@ profile context taking final precedence for protected `viewer` state.
 | `runtime_preference` | observational only |
 | trusted maturity aliases | hard `maturity_gate`, currently only `kids` |
 
-The output is a resolved adapter intent intended for a future direct scoring
+The output is the adapter-ready intent consumed by the Phase 3C direct scoring
 seam; it is not raw input for `StreamingAdapter.resolve_intent`. Maturity policy
 does not manufacture or override `viewer_profile`, because doing so would turn
 a hard policy into an unintended soft ranking signal.
@@ -313,8 +366,8 @@ constraints or timestamps.
   compared.
 - **Canonical V4 signal names:** The capability registry uses V4-facing signal
   names, including streaming `energy` and `viewer`. It is separate from the
-  current adapters, whose names differ. Pure streaming translation now exists;
-  runtime integration remains deferred.
+  current adapters, whose names differ. Pure streaming translation now feeds
+  the internal Phase 3C seam; the legacy API and other domains remain separate.
 - **Separate capability registry:** Existing `DomainAdapter` implementations do
   not expose supported signal names, types, or ranges. Phase 1 therefore uses
   an injectable, immutable registry instead of extending the runtime adapter
@@ -366,8 +419,9 @@ constraints or timestamps.
 - **Atomic orchestration preparation:** The broad target sketch lists separate
   `active_step`, `execute`, `observe`, and lifecycle methods. Phase 3B exposes
   only `prepare_execution` so validation, temporal selection, precedence, and
-  normalization share one trusted-time boundary. Ranking belongs to Phase 3C;
-  outcome lifecycle methods remain Phase 8 work.
+  normalization share one trusted-time boundary. Phase 3C consumes that result
+  without adding ranking to the orchestrator; outcome lifecycle methods remain
+  Phase 8 work.
 - **Explicit trust parameters:** `active_profile_context` and
   `authoritative_constraints` are required keyword arguments even when empty.
   This makes caller ownership visible and prevents defaults from implying that
@@ -380,6 +434,20 @@ constraints or timestamps.
   `ActivePlanStep` projection instead of exposing the mutable Pydantic
   `IntentStep`. Phase 4 can still record the selected step without permitting
   the prepared execution envelope to become internally inconsistent.
+- **Resolved response compatibility:** The existing `RankingResponse` requires
+  a legacy `Intent` and supports `mode_used`, although the resolved seam does
+  not receive a legacy request. Phase 3C projects only the normalized
+  `intent_type`, reports `advanced` mode, and uses zero intent-parsing latency.
+  These fields are compatibility metadata, not policy or authentication.
+- **Prophecy execution remains deferred:** The Phase 3 heading proposed both
+  Prophecy and ranking integration, but it did not define whether advisory
+  Prophecy context precedes plan state, the active step, or authenticated
+  profile context. Phase 3C integrates deterministic ranking only rather than
+  inventing precedence that could override validated plan intent.
+- **One shared scoring implementation:** Phase 3C factors the existing scoring
+  body into a private method used by both `rank()` and `rank_resolved()`.
+  Formula, hard-gate, call-order, diversity, explanation, and response behavior
+  are intentionally preserved rather than reimplemented.
 
 ## Technical debt and risks
 
@@ -390,8 +458,8 @@ constraints or timestamps.
 - **Energy naming and scale:** The V4 contract uses `energy` on a 0-to-1 scale;
   domain adapters currently use `energy_level`, also as an implied 0-to-1
   value; Prophecy Agent templates use camel-case `energyLevel` on a 0-to-100
-  scale. Phase 3A now converts these explicitly, but runtime Prophecy and
-  ranking integration remain unimplemented.
+  scale. Phase 3A converts these explicitly and Phase 3C consumes normalized
+  plan intent, but runtime Prophecy merging remains unimplemented.
 - **Constraint translation:** V4 represents constraints as typed objects, while
   existing adapters receive dictionaries such as `maturity_gate`,
   `block_explicit`, `surge_cap`, and `allergens`. Phase 3A implements only the
@@ -404,18 +472,19 @@ constraints or timestamps.
 - **Planner/adapter vocabulary boundary:** The planner emits canonical V4
   `energy` (0-to-1) and `viewer`, while streaming adapters consume
   `energy_level` and `viewer_profile`, and Prophecy Agent emits `energyLevel`
-  on a 0-to-100 scale. The pure conversion is implemented, but direct wiring
-  through the current ranking request would still silently drop intent.
-- **Missing resolved-intent engine seam:** `DomainRankingEngine.rank()` rebuilds
-  raw intent from the fixed legacy `Intent` model, which cannot carry
-  `energy_level`, `viewer_profile`, or `time_bucket`.
-  `StreamingAdapter.resolve_intent()` also ignores an incoming `intent_type`.
-  Phase 3C needs an additive resolved-intent execution method while preserving
-  the existing `rank()` path and ranking formulas.
+  on a 0-to-100 scale. Plan normalization and direct resolved ranking are now
+  wired, but the fixed legacy ranking request intentionally remains unable to
+  carry V4 execution state.
+- **Internal-only resolved seam:** `rank_resolved` accepts adapter-ready value
+  mappings and cannot authenticate how they were produced. It must remain an
+  in-process consumer of orchestrator output. A future V4 API must reconstruct
+  trusted profile and policy context server-side rather than accepting a
+  client-authored normalized result or `hard=true` claim.
 - **Prepared execution is not ranking authority:** `PreparedPlanExecution` is a
   copy-safe in-process result, but its Python type is not authentication. Phase
-  3C must consume it only from the orchestrator path and must not deserialize
-  the type from an external request as proof of profile or constraint trust.
+  3C consumes its normalized values only through in-process composition; a
+  future boundary must not deserialize the type as proof of profile or
+  constraint trust.
 - **Partial maturity semantics:** The capability registry permits `kids`,
   `teen`, `family`, and `adult`, while the streaming adapter only enforces the
   `kids` gate. Phase 3A fails closed for the other values; later domain-policy
@@ -429,9 +498,18 @@ constraints or timestamps.
   can authenticate the profile, session, system, or domain-policy source and
   must persist and re-supply those constraints for each execution.
 - **Normalized result provenance:** The exported normalized-result dataclasses
-  provide immutable value containers, not authentication. Phase 3C must accept
-  them only from the in-process orchestrator/normalizer path and must never
-  deserialize them from an external request as proof of policy authority.
+  provide immutable value containers, not authentication. Phase 3C accepts
+  their values only from the in-process orchestrator/normalizer path and must
+  never deserialize them from an external request as proof of policy
+  authority.
+- **Existing diversity semantics:** The engine counts every prior occurrence
+  of a diversity key, even when equal keys are separated by another key. Phase
+  3C preserves this existing behavior and corrects its misleading code comment;
+  any semantic change requires a separately reviewed ranking change.
+- **Legacy adapter trust:** The resolved seam validates and isolates adapter
+  inputs and outputs, but the legacy `rank()` path intentionally retains its
+  existing mutable adapter contract for backward compatibility. Tightening the
+  legacy path requires a separate behavior-change review.
 - **Streaming-only behavior:** The objective names are broadly useful, but
   reusing the current templates for other domains would invent unreviewed
   semantics. Domain-specific templates remain necessary.
@@ -443,42 +521,35 @@ constraints or timestamps.
   `step_id`, although events such as `PLAN_CANCELLED` and `SESSION_ENDED` may be
   plan-scoped. This should be resolved before the outcome API is introduced.
 
-## Completed Phase 3B and recommended Phase 3C
+## Completed Phase 3 ranking path and recommended Phase 4
 
-Phase 3B implements only the deterministic `IntentOrchestrator` core:
+Phase 3 now composes the deterministic streaming path without making the
+orchestrator a ranker:
 
-1. accepts trusted `now`, trusted active-profile context, and separately
-   authenticated authoritative constraints;
-2. revalidates the plan at execution time and stops expired plans;
-3. selects the latest step whose offset is active at `now` without modifying the
-   plan;
-4. merges validated `plan.current_state` with the active step, with step values
-   taking precedence for ordinary signals and trusted profile context taking
-   final precedence for protected fields such as `viewer`;
-5. calls `PlanIntentNormalizer` with that resolved canonical context;
-6. exposes deterministic results for T+0, T+25, T+50, boundary, pre-start, and
-   expired-plan tests; and
-7. snapshots authority once, rejects forged plan provenance, enforces kids
-   profile/gate coherence, and preserves elapsed-time behavior across
-   daylight-saving transitions.
+1. `IntentOrchestrator` revalidates the plan at trusted execution time, selects
+   the active step, applies context precedence, and normalizes intent and
+   separately authoritative hard constraints;
+2. `DomainRankingEngine.rank_resolved` snapshots only the adapter-ready intent,
+   hard constraints, and candidates, then bypasses raw intent resolution;
+3. both the legacy and resolved ranking paths execute the same hard gates,
+   multipliers, diversity pass, explanations, and response construction; and
+4. a wind-down plan executes at T+0, T+25, and T+50 with deterministic replay
+   and the kids maturity gate blocking adult content at every step.
 
-Phase 3C should add a narrow `DomainRankingEngine` execution seam that consumes
-`NormalizedAdapterInput.resolved_intent` and `hard_constraints` directly. Keep
-the existing `rank(RankingRequest)` behavior unchanged. The new seam may
-delegate the existing hard-gate, multiplier, diversity, and response-building
-logic, but it must not duplicate or change scoring formulas. Integrate Prophecy
-only after its output crosses `ProphecyContextNormalizer`.
-
-Phase 3 is complete only when the multi-step streaming plan executes across
-simulated time with deterministic replay and authoritative maturity-gate tests.
-Do not add tracing, APIs, frontend work, outcome loops, or an LLM planner in
-Phase 3.
+The recommended Phase 4 is a separate execution-trace PR. First replace the
+generic `validation_results`, `safety_decisions`, and `ranking_trace` payloads
+with explicit typed structures that distinguish interpreted, validated,
+normalized, applied, observational, and blocked data. Then build traces from
+trusted in-process execution values without changing ranking behavior or
+exposing a V4 API. Keep deterministic decision data separate from measured
+latency and generated trace identifiers. Resolve plan-level versus step-level
+event identity before adding lifecycle events.
 
 ## Intentionally deferred
 
 - Context-interpreter behavior and probabilistic interpretation.
-- Deterministic execution integration with Prophecy Agent or
-  `DomainRankingEngine` (Phase 3C).
+- Runtime Prophecy merging until its precedence relative to plan state, the
+  active step, and authenticated profile context is explicitly defined.
 - Normalization for music, e-commerce, ride matching, or food delivery.
 - Full execution-trace creation and strongly typed trace internals (Phase 4).
 - `/v4/plan`, `/v4/execute`, `/v4/observe`, plan retrieval, and trace retrieval

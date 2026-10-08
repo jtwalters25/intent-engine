@@ -80,7 +80,7 @@ def _frozen_copy(values: Mapping[str, Any]) -> Mapping[str, Any]:
 
 @dataclass(frozen=True)
 class NormalizedAdapterInput:
-    """Immutable, deterministic output for a future adapter execution seam.
+    """Immutable, deterministic output for the adapter execution seam.
 
     ``resolved_intent`` is meant for adapter scoring methods such as
     ``compute_multipliers``.  It is not raw input for ``resolve_intent``.
