@@ -762,6 +762,13 @@ than repeating it. Authenticated profile context is a separate trusted input
 and overrides protected profile fields such as `viewer`; neither interpreted
 plan state nor a step may impersonate the active profile.
 
+For the streaming pilot, an authenticated `viewer=kids` profile must be paired
+with a separately authoritative kids maturity constraint. Missing policy fails
+closed; the orchestrator checks coherence but does not derive policy from the
+viewer signal. Likewise, hard constraints or `SYSTEM` / `DOMAIN` provenance
+labels embedded only in plan data have no execution authority and are rejected
+unless corroborated by the snapshotted authoritative channel.
+
 Prophecy input uses its own inbound normalization. Finite, non-boolean
 `energyLevel` values on the 0-to-100 scale become canonical `energy` on the
 0-to-1 scale. Canonical `energy` and the existing `energy_level` custom-schedule
@@ -790,45 +797,42 @@ The orchestrator owns plan execution.
 
 ```python
 class IntentOrchestrator:
-
-    def start_plan(...):
-        ...
-
-    def active_step(...):
-        ...
-
-    def advance(...):
-        ...
-
-    def execute(...):
-        ...
-
-    def observe(...):
-        ...
-
-    def complete(...):
+    def prepare_execution(
+        plan,
+        *,
+        now,
+        active_profile_context,
+        authoritative_constraints,
+    ):
         ...
 ```
+
+Phase 3B exposes one atomic preparation boundary rather than partially public
+lifecycle methods. It revalidates the plan, selects the active step, resolves
+context precedence, and normalizes adapter input using the same trusted inputs.
+This avoids a caller validating at one time and executing a separately mutated
+plan or constraint set. Constraint input is copied and revalidated once before
+both plan validation and normalization. Aware timestamps are compared as UTC
+instants so daylight-saving folds and gaps cannot change step or expiration
+semantics. Ranking execution is added in Phase 3C; stateful
+`observe`, `advance`, and `complete` behavior remains Phase 8 work.
 
 The orchestrator does NOT rank candidates itself.
 
 Instead:
 
 ```python
-step = orchestrator.active_step(plan, now)
-
-context = orchestrator.resolve_context(plan, step)
-
-normalized = normalizer.normalize(
-    domain=plan.domain,
-    canonical_intent=context,
+prepared = orchestrator.prepare_execution(
+    plan,
+    now=trusted_now,
+    active_profile_context=trusted_profile,
     authoritative_constraints=trusted_constraints,
 )
 
 result = domain_engine.rank_resolved(  # proposed additive Phase 3C seam
-    domain=plan.domain,
-    resolved_intent=normalized.resolved_intent,
-    constraints=normalized.hard_constraints,
+    domain=prepared.domain,
+    resolved_intent=prepared.normalized_input.resolved_intent,
+    constraints=prepared.normalized_input.hard_constraints,
     candidates=candidates,
 )
 ```
@@ -1791,6 +1795,16 @@ IntentOrchestrator
 
 Own trusted-time active-step selection, expiration, execution-time
 revalidation, and the deterministic current-state/active-step merge.
+
+**Phase 3B done:** `IntentOrchestrator.prepare_execution` revalidates the plan
+at caller-supplied time, rejects pre-start and expired execution, selects the
+latest active step, applies `current_state < active step < authenticated
+profile` precedence, and invokes `PlanIntentNormalizer` with the separate
+authoritative-constraint channel. The output is deterministic and copy-safe;
+constraints and the selected step are immutable snapshots, trusted kids profile
+context requires a corroborating kids maturity gate, and aware time arithmetic
+uses elapsed instants across daylight-saving transitions. It does not accept
+candidates, rank, call adapters, or read the system clock.
 
 ### Phase 3C — Deterministic execution integration
 

@@ -3,6 +3,11 @@
 import json
 from datetime import datetime, timedelta, timezone
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - Python 3.8 compatibility
+    ZoneInfo = None
+
 import pytest
 
 from intent_engine.agentic.schemas import (
@@ -158,6 +163,27 @@ class TestPlanValidation:
         plan = _plan(expires_at=NOW + timedelta(minutes=10))
         with pytest.raises(PlanValidationError):
             validator.validate(plan, now=NOW + timedelta(minutes=10))
+
+    @pytest.mark.skipif(ZoneInfo is None, reason="zoneinfo is unavailable")
+    def test_expiration_uses_instants_across_dst_fold(self, validator):
+        pacific = ZoneInfo("America/Los_Angeles")
+        created_at = datetime(2026, 11, 1, 0, 30, tzinfo=pacific)
+        expires_at = datetime(2026, 11, 1, 1, 45, tzinfo=pacific, fold=0)
+        actual_after_expiry = datetime(
+            2026,
+            11,
+            1,
+            1,
+            15,
+            tzinfo=pacific,
+            fold=1,
+        )
+        plan = _plan(created_at=created_at, expires_at=expires_at)
+
+        with pytest.raises(PlanValidationError) as captured:
+            validator.validate(plan, now=actual_after_expiry)
+
+        assert "expired_plan" in {issue.code for issue in captured.value.issues}
 
     def test_plan_expiring_after_validation_time_is_accepted(self, validator):
         plan = _plan(expires_at=NOW + timedelta(microseconds=1))

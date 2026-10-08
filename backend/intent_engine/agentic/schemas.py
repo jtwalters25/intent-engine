@@ -6,7 +6,7 @@ from probabilistic components, so unknown fields are rejected instead of being
 silently ignored.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import math
 from typing import Any, Dict, List, Optional
@@ -36,6 +36,24 @@ def _validate_confidence(value: Any) -> float:
 
 def _is_timezone_aware(value: datetime) -> bool:
     return value.utcoffset() is not None
+
+
+def datetime_instant(value: datetime) -> datetime:
+    """Normalize aware datetimes to UTC so comparisons use elapsed time.
+
+    Python intentionally compares two aware datetimes sharing the same tzinfo
+    by wall-clock fields. That produces incorrect ordering across daylight-
+    saving folds and gaps. Naive timestamps retain their existing semantics.
+    """
+    return value.astimezone(timezone.utc) if _is_timezone_aware(value) else value
+
+
+def add_elapsed_minutes(value: datetime, minutes: int) -> datetime:
+    """Add elapsed minutes while preserving the original timezone object."""
+    duration = timedelta(minutes=minutes)
+    if not _is_timezone_aware(value):
+        return value + duration
+    return (value.astimezone(timezone.utc) + duration).astimezone(value.tzinfo)
 
 
 def validate_json_value(value: Any, *, path: str = "value") -> None:
@@ -238,7 +256,7 @@ class IntentPlan(AgenticContract):
         if self.expires_at is not None:
             if _is_timezone_aware(self.created_at) != _is_timezone_aware(self.expires_at):
                 raise ValueError("created_at and expires_at must use matching timezone awareness")
-            if self.expires_at <= self.created_at:
+            if datetime_instant(self.expires_at) <= datetime_instant(self.created_at):
                 raise ValueError("expires_at must be later than created_at")
 
         return self

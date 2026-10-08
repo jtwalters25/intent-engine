@@ -7,6 +7,11 @@ time is the semantic validator's responsibility.
 
 from datetime import datetime, timedelta, timezone
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - Python 3.8 compatibility
+    ZoneInfo = None
+
 import pytest
 from pydantic import ValidationError
 
@@ -336,6 +341,15 @@ class TestIntentPlan:
 
         with pytest.raises(ValidationError):
             _plan(expires_at=NOW - timedelta(seconds=1))
+
+    @pytest.mark.skipif(ZoneInfo is None, reason="zoneinfo is unavailable")
+    def test_expiration_order_uses_instants_across_dst_fold(self):
+        pacific = ZoneInfo("America/Los_Angeles")
+        created_later = datetime(2026, 11, 1, 1, 30, tzinfo=pacific, fold=1)
+        expires_earlier = datetime(2026, 11, 1, 1, 45, tzinfo=pacific, fold=0)
+
+        with pytest.raises(ValidationError):
+            _plan(created_at=created_later, expires_at=expires_earlier)
 
     def test_no_expiration_is_allowed(self):
         assert _plan(expires_at=None).expires_at is None

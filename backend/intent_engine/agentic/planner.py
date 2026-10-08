@@ -6,7 +6,7 @@ authority on constraints produced by interpretation.  Every returned plan has
 crossed the Phase 1 validation boundary.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from hashlib import sha256
 import json
 import math
@@ -22,6 +22,7 @@ from intent_engine.agentic.schemas import (
     IntentConstraint,
     IntentPlan,
     IntentStep,
+    add_elapsed_minutes,
 )
 from intent_engine.agentic.validator import PlanValidationError, PlanValidator
 from intent_engine.schemas import Domain
@@ -206,7 +207,7 @@ class RuleBasedIntentPlanner:
                 assumptions=assumptions,
                 confidence=checked_interpretation.confidence,
                 created_at=now,
-                expires_at=now + timedelta(minutes=horizon),
+                expires_at=add_elapsed_minutes(now, horizon),
                 planner_version=RULE_BASED_PLANNER_VERSION,
             )
         except ValidationError as exc:

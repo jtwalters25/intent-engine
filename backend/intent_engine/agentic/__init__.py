@@ -33,6 +33,13 @@ from intent_engine.agentic.normalizer import (
     PlanIntentNormalizer,
     ProphecyContextNormalizer,
 )
+from intent_engine.agentic.orchestrator import (
+    PROTECTED_PROFILE_SIGNALS,
+    ActivePlanStep,
+    IntentOrchestrator,
+    OrchestrationError,
+    PreparedPlanExecution,
+)
 from intent_engine.agentic.validator import (
     IntentPlanValidator,
     PlanValidationError,
@@ -42,6 +49,7 @@ from intent_engine.agentic.validator import (
 )
 
 __all__ = [
+    "ActivePlanStep",
     "MAX_PLAN_STEPS",
     "ConstraintSource",
     "ContextInterpretation",
@@ -53,15 +61,19 @@ __all__ = [
     "IntentPlan",
     "IntentPlanValidator",
     "IntentPlanner",
+    "IntentOrchestrator",
     "IntentStep",
     "NormalizationError",
     "NormalizedAdapterInput",
     "NormalizedProphecyContext",
     "OutcomeEvent",
+    "OrchestrationError",
     "PlanValidationError",
     "PlanValidator",
     "PlanningError",
     "PlanIntentNormalizer",
+    "PreparedPlanExecution",
+    "PROTECTED_PROFILE_SIGNALS",
     "ProphecyContextNormalizer",
     "RuleBasedIntentPlanner",
     "RULE_BASED_PLANNER_VERSION",

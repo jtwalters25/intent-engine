@@ -12,7 +12,11 @@ from intent_engine.agentic.capabilities import (
     DEFAULT_DOMAIN_CAPABILITIES,
     DomainCapabilities,
 )
-from intent_engine.agentic.schemas import IntentConstraint, IntentPlan
+from intent_engine.agentic.schemas import (
+    IntentConstraint,
+    IntentPlan,
+    datetime_instant,
+)
 from intent_engine.schemas import Domain
 
 
@@ -174,7 +178,7 @@ class PlanValidator:
                         message="expires_at and now must use matching timezone awareness",
                     )
                 )
-            elif checked.expires_at <= now:
+            elif datetime_instant(checked.expires_at) <= datetime_instant(now):
                 issues.append(
                     ValidationIssue(
                         code="expired_plan",

@@ -2,16 +2,18 @@
 
 ## Current status
 
-Phase 3A, **deterministic intent-vocabulary normalization**, is implemented on
-top of the accepted Phase 1 contracts and Phase 2 planner. Overall Phase 3 is
-still in progress: no orchestrator or execution integration exists yet. The
-new code remains additive and isolated under `intent_engine.agentic`; it does
-not call the ranking engine or adapters, inspect, score, or select candidates,
-alter domain-adapter behavior, or change an existing API.
+Phase 3B, **deterministic orchestration preparation**, is implemented on top of
+the accepted Phase 1 contracts, Phase 2 planner, and Phase 3A normalization
+boundary. Overall Phase 3 is still in progress: the orchestrator prepares an
+active plan step for execution, but the Phase 3C ranking-engine seam does not
+exist yet. The new code remains additive and isolated under
+`intent_engine.agentic`; it does not call the ranking engine or adapters,
+inspect, score, or select candidates, alter domain-adapter behavior, or change
+an existing API.
 
-Verification completed with 654 passing backend tests (274 pre-existing, 161
-Phase 1, 75 Phase 2, and 144 Phase 3A tests) plus the existing passing frontend
-test.
+Verification completed with 721 passing backend tests (274 pre-existing, 161
+Phase 1, 75 Phase 2, 144 Phase 3A, and 67 Phase 3B tests) plus the existing
+passing frontend test.
 
 ## Completed scope
 
@@ -65,6 +67,32 @@ test.
   invented ranking effect.
 - Restricted Phase 3A hard-gate output to `maturity_gate=kids`, the only
   maturity value the current streaming adapter actually enforces.
+- Added a deterministic `IntentOrchestrator.prepare_execution` boundary that
+  revalidates every plan at execution time using caller-supplied trusted time
+  and separately supplied authoritative constraints.
+- Added exact temporal selection of the latest started plan step, with
+  fail-closed behavior before plan start, before the first step, at expiration,
+  and for timezone-incompatible clocks.
+- Added deterministic context precedence: validated `current_state`, then the
+  active step for ordinary signals, then caller-authenticated profile context
+  for the protected canonical `viewer` signal.
+- Returned an immutable `PreparedPlanExecution` containing the active step,
+  immutable canonical intent, and immutable `NormalizedAdapterInput`. It is an
+  in-process value container, not proof of external authentication.
+- Snapshotted and contract-revalidated authoritative constraints once before
+  both plan validation and normalization, preventing mutable or stateful caller
+  sequences from dropping a gate between the two boundaries.
+- Rejected hard plan constraints not exactly corroborated by the separate
+  authoritative channel, and rejected soft plan constraints that claim
+  `SYSTEM` or `DOMAIN` provenance.
+- Required a caller-authenticated kids profile to be paired with a separately
+  authoritative kids maturity gate. This is a coherence check; the orchestrator
+  does not derive policy from soft viewer intent.
+- Made the prepared active step deeply immutable so it cannot diverge from the
+  frozen canonical and normalized execution inputs.
+- Normalized aware timestamp comparison and duration arithmetic to UTC instants
+  so plan creation, expiration, and step selection remain correct across
+  daylight-saving gaps and folds.
 
 ## Files added
 
@@ -115,6 +143,25 @@ Modified:
 No orchestrator, ranking engine, adapter, Prophecy Agent, LLM, API, or frontend
 code was modified for Phase 3A.
 
+## Phase 3B files added or modified
+
+Added:
+
+- `backend/intent_engine/agentic/orchestrator.py`
+- `backend/tests/agentic/test_orchestrator.py`
+
+Modified:
+
+- `backend/intent_engine/agentic/__init__.py`
+- `backend/intent_engine/agentic/planner.py`
+- `backend/intent_engine/agentic/schemas.py`
+- `backend/intent_engine/agentic/validator.py`
+- `docs/IntentEngine_v4_Spec.md`
+- `docs/v4_implementation_status.md`
+
+No ranking engine, domain engine, adapter, Prophecy Agent, LLM, API, or
+frontend code was modified for Phase 3B.
+
 ## Tests added
 
 The Phase 1 tests cover:
@@ -142,10 +189,12 @@ Test results:
 - Phase 1 agentic tests: **161 passed**.
 - Phase 2 planner tests: **75 passed**.
 - Phase 3A normalization tests: **144 passed**.
-- All agentic tests: **380 passed**.
-- Full backend suite: **654 passed** (274 existing plus 380 agentic).
+- Phase 3B orchestrator tests: **65 passed**.
+- Phase 3B cross-cutting time-ordering regression tests: **2 passed**.
+- All agentic tests: **447 passed**.
+- Full backend suite: **721 passed** (274 existing plus 447 agentic).
 - Frontend suite: **1 passed**.
-- Combined repository test total: **655 passed**.
+- Combined repository test total: **722 passed**.
 - Python bytecode compilation: **passed**.
 
 The Phase 2 tests cover all five objectives, deterministic output and IDs,
@@ -164,6 +213,16 @@ and conflicting constraints, fail-closed unsupported maturity semantics,
 Prophecy scale conversion and ambiguity, current Prophecy defaults, and the
 absence of candidate, clock, adapter, and authority inputs at the wrong
 boundaries.
+
+The Phase 3B tests cover exact active-step boundaries at T+0, T+25, and T+50,
+sub-minute and expiration boundaries, pre-start/no-active-step failures,
+timezone compatibility, execution-time mutation detection, deterministic
+state/step/profile precedence, authoritative-channel isolation, malformed,
+soft, and inferred authority, copy-safe and immutable outputs, deterministic
+replay, one-pass constraint snapshots, forged authority rejection,
+profile-policy coherence, injected capability registries, daylight-saving
+fold/gap behavior, and the absence of candidate, ranker, adapter, Prophecy, or
+system-clock inputs at the orchestration boundary.
 
 ## Phase 2 default behavior
 
@@ -193,17 +252,26 @@ safe default for them.
   `INFERRED` provenance; interpreted hard constraints and claims of `SYSTEM` or
   `DOMAIN` authority fail closed. A source enum value is provenance metadata,
   not proof of authority—the separate trusted input channel is the authority
-  boundary.
+  boundary. Phase 3B snapshots this channel once and rejects any hard plan
+  constraint that is not exactly corroborated by it.
+- **Execution time:** `IntentOrchestrator.prepare_execution` requires `now`
+  explicitly, revalidates expiration against it, and never reads the system
+  clock. It rejects execution before `created_at` and selects the latest step
+  whose offset has begun.
+- **Active profile:** authenticated active-profile context is a separate,
+  required caller channel. For the streaming pilot it may contain only the
+  canonical protected `viewer` signal, which takes final precedence over plan
+  state and step intent. The orchestrator does not authenticate the mapping;
+  that remains an application-boundary responsibility. A trusted kids profile
+  without a separately authoritative kids maturity gate fails closed.
 
 ## Phase 3A normalization behavior
 
 `PlanIntentNormalizer` accepts a caller-resolved canonical intent mapping. It
-does not select an active step or merge plan state; Phase 3B must merge
-`IntentPlan.current_state` with the active step, with step values winning,
-before calling this boundary. That precedence applies only to ordinary intent
-signals. Separately authenticated profile context must override protected
-profile fields such as `viewer` so interpreted data cannot impersonate the
-active profile.
+does not select an active step or merge plan state. Phase 3B now performs that
+work atomically: `IntentPlan.current_state` is merged with the active step,
+with step values winning for ordinary signals, and separately authenticated
+profile context taking final precedence for protected `viewer` state.
 
 | Canonical input | Phase 3A output |
 |---|---|
@@ -295,6 +363,23 @@ constraints or timestamps.
   0-to-100 `energyLevel`, Phase 3A explicitly supports the existing custom
   schedule spelling `energy_level` on the 0-to-1 scale. Supplying more than one
   spelling fails rather than guessing precedence or scale.
+- **Atomic orchestration preparation:** The broad target sketch lists separate
+  `active_step`, `execute`, `observe`, and lifecycle methods. Phase 3B exposes
+  only `prepare_execution` so validation, temporal selection, precedence, and
+  normalization share one trusted-time boundary. Ranking belongs to Phase 3C;
+  outcome lifecycle methods remain Phase 8 work.
+- **Explicit trust parameters:** `active_profile_context` and
+  `authoritative_constraints` are required keyword arguments even when empty.
+  This makes caller ownership visible and prevents defaults from implying that
+  profile or policy resolution occurred.
+- **Elapsed-time semantics:** Aware plan timestamps are ordered as UTC instants
+  rather than same-zone wall times. Planner horizons and orchestrator step
+  offsets therefore retain their elapsed-minute meaning across daylight-saving
+  gaps and folds; naive timestamps preserve their prior deterministic behavior.
+- **Prepared step snapshot:** `PreparedPlanExecution.active_step` uses a frozen
+  `ActivePlanStep` projection instead of exposing the mutable Pydantic
+  `IntentStep`. Phase 4 can still record the selected step without permitting
+  the prepared execution envelope to become internally inconsistent.
 
 ## Technical debt and risks
 
@@ -327,10 +412,10 @@ constraints or timestamps.
   `StreamingAdapter.resolve_intent()` also ignores an incoming `intent_type`.
   Phase 3C needs an additive resolved-intent execution method while preserving
   the existing `rank()` path and ranking formulas.
-- **Current-state merge is not implemented:** Most Phase 2 steps inherit
-  `viewer` from `IntentPlan.current_state`. Phase 3B must merge plan state with
-  the active step before normalization or kids wind-down intent would silently
-  use the adapter's family default.
+- **Prepared execution is not ranking authority:** `PreparedPlanExecution` is a
+  copy-safe in-process result, but its Python type is not authentication. Phase
+  3C must consume it only from the orchestrator path and must not deserialize
+  the type from an external request as proof of profile or constraint trust.
 - **Partial maturity semantics:** The capability registry permits `kids`,
   `teen`, `family`, and `adult`, while the streaming adapter only enforces the
   `kids` gate. Phase 3A fails closed for the other values; later domain-policy
@@ -338,11 +423,11 @@ constraints or timestamps.
 - **Local objective vocabulary:** Phase 2 objective aliases are intentionally
   local to the planner. If a later deterministic context interpreter also owns
   aliases, the vocabulary must be centralized to prevent drift.
-- **Constraint provenance enforcement:** Phase 2 separates trusted constraints
-  by API channel, but only a future API/application policy resolver can
-  authenticate the profile, session, system, or domain-policy source. The
-  orchestrator must accept, preserve, and revalidate that already-authenticated
-  channel; it must not treat a `source` enum label as proof.
+- **Constraint provenance enforcement:** Phase 3B accepts, preserves, and
+  revalidates a separate authoritative channel and never treats a `source`
+  enum label in the plan as proof. Only a future API/application policy resolver
+  can authenticate the profile, session, system, or domain-policy source and
+  must persist and re-supply those constraints for each execution.
 - **Normalized result provenance:** The exported normalized-result dataclasses
   provide immutable value containers, not authentication. Phase 3C must accept
   them only from the in-process orchestrator/normalizer path and must never
@@ -358,21 +443,24 @@ constraints or timestamps.
   `step_id`, although events such as `PLAN_CANCELLED` and `SESSION_ENDED` may be
   plan-scoped. This should be resolved before the outcome API is introduced.
 
-## Recommended Phase 3B and 3C
+## Completed Phase 3B and recommended Phase 3C
 
-Phase 3B should implement only the deterministic `IntentOrchestrator` core:
+Phase 3B implements only the deterministic `IntentOrchestrator` core:
 
-1. accept trusted `now`, trusted active-profile context, and separately
+1. accepts trusted `now`, trusted active-profile context, and separately
    authenticated authoritative constraints;
-2. revalidate the plan at execution time and stop expired plans;
-3. select the latest step whose offset is active at `now` without modifying the
+2. revalidates the plan at execution time and stops expired plans;
+3. selects the latest step whose offset is active at `now` without modifying the
    plan;
-4. merge validated `plan.current_state` with the active step, with step values
+4. merges validated `plan.current_state` with the active step, with step values
    taking precedence for ordinary signals and trusted profile context taking
    final precedence for protected fields such as `viewer`;
-5. call `PlanIntentNormalizer` with that resolved canonical context; and
-6. expose deterministic results for T+0, T+25, T+50, boundary, pre-start, and
-   expired-plan tests.
+5. calls `PlanIntentNormalizer` with that resolved canonical context;
+6. exposes deterministic results for T+0, T+25, T+50, boundary, pre-start, and
+   expired-plan tests; and
+7. snapshots authority once, rejects forged plan provenance, enforces kids
+   profile/gate coherence, and preserves elapsed-time behavior across
+   daylight-saving transitions.
 
 Phase 3C should add a narrow `DomainRankingEngine` execution seam that consumes
 `NormalizedAdapterInput.resolved_intent` and `hard_constraints` directly. Keep
@@ -389,8 +477,8 @@ Phase 3.
 ## Intentionally deferred
 
 - Context-interpreter behavior and probabilistic interpretation.
-- Orchestration, active-step selection, current-state merging, and integration
-  with Prophecy Agent or `DomainRankingEngine` (Phases 3B and 3C).
+- Deterministic execution integration with Prophecy Agent or
+  `DomainRankingEngine` (Phase 3C).
 - Normalization for music, e-commerce, ride matching, or food delivery.
 - Full execution-trace creation and strongly typed trace internals (Phase 4).
 - `/v4/plan`, `/v4/execute`, `/v4/observe`, plan retrieval, and trace retrieval
