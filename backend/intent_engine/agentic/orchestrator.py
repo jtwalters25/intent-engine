@@ -104,11 +104,12 @@ class ActivePlanStep:
 
 @dataclass(frozen=True)
 class PreparedPlanExecution:
-    """Immutable output ready for the future Phase 3C execution seam.
+    """Immutable output ready for the Phase 3C execution seam.
 
     This value is an in-process preparation result, not proof that external
-    data is authenticated.  Phase 3C must obtain it from ``IntentOrchestrator``
-    rather than deserialize it from a request.
+    data is authenticated. Callers compose its normalized values with
+    ``DomainRankingEngine.rank_resolved`` in process rather than deserialize it
+    from a request.
     """
 
     plan_id: str
