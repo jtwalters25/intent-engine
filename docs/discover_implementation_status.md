@@ -46,9 +46,10 @@ copy to dedupe later.
 - `backend/intent_engine/discover/` — **this pilot.** Present today:
   `schemas.py` (Phase 1), `providers/` (Phase 2), `normalization.py` +
   `constraints.py` (Phase 3), `signals.py` + `ranking.py` + `explain.py`
-  (Phase 4), and the `evaluation/` subpackage (§16 reference).
+  (Phase 4), `service.py` + `router.py` (Phase 5), and the `evaluation/`
+  subpackage (§16 reference).
 - Branch `feat/discover-foundation` is rebased onto current `main` (V4 Phase
-  5/6). Full backend suite green: **1098 tests passing** (`cd backend && python3
+  5/6). Full backend suite green: **1110 tests passing** (`cd backend && python3
   -m pytest tests/ -q`).
 
 ## 2. Current V4 implementation status
@@ -106,9 +107,10 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
    one response page into candidates with explicit provenance. Live credentials,
    provider terms/display review, and multi-provider retrieval composition remain
    later readiness/service work.
-6. **No API endpoints** (`/discover`, feedback) or frontend `Discover.tsx` (§14,
-   §15). Note the frontend **Agentic Mode** demo on this branch is a separate
-   streaming-pilot artifact, not the Discover frontend.
+6. **Backend API done (Phase 5); frontend pending.** `POST /discover/search` and
+   `POST /discover/feedback` are live via a self-contained `discover/router.py`
+   (mounted with one `include_router` in `api.py`, mirroring the V4 router). The
+   Discover frontend (`Discover.tsx`, §15) is Phase 6 and not started.
 7. **No `evaluation/baselines.py`** — the relevance and LLM-only arms (§16).
 
 ## 5. Provider requirements
@@ -174,9 +176,14 @@ One phase at a time (spec §20); do not auto-implement later phases.
   `MultiplierSet`, and registering a `Domain.discover` would edit shared
   `core/`/`schemas.py` (conflict surface + broad blast radius). §12 permits "the
   existing engine OR its supported extension points."
-- [ ] **Phase 5 — Discover API.** `/discover` + feedback endpoints; end-to-end
-  mocked pipeline test (request→intent→retrieval→normalize→constraints→rank→
-  explain→response).
+- [x] **Phase 5 — Discover API.** `service.py` composes the pipeline
+  (retrieve→deduplicate→constraints→rank→explain) with concurrent retrieval,
+  partial-failure warnings, and a hard RetrievalError when all providers fail
+  (no fabrication, §18). `router.py` exposes `POST /discover/search` +
+  `/discover/feedback` with an injectable provider dependency; mounted via one
+  `include_router` in `api.py` (isolated from legacy/V4, mirroring `api_v4`). 12
+  tests (pipeline + TestClient, mocked providers, no live calls); full suite
+  **1110 passed**.
 - [ ] **Phase 6 — Frontend.** `Discover.tsx` + components (input, results, why,
   source links, compare, feedback).
 - [ ] **Phase 7 — Feedback + evaluation.** `evaluation/baselines.py` (relevance,
