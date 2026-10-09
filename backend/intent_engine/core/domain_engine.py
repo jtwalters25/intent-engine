@@ -1,9 +1,11 @@
 """Domain-agnostic ranking engine using pluggable adapters."""
 
 from collections.abc import Mapping as MappingABC, Sequence as SequenceABC
+from dataclasses import dataclass
 import math
 import time as _time
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from types import MappingProxyType
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from intent_engine.core.adapter_protocol import DomainAdapter
 from intent_engine.schemas import (
@@ -23,6 +25,32 @@ DIVERSITY_PENALTY = -0.05  # per prior occurrence of the same key
 SUPPORTED_RESOLVED_RANKING_DOMAINS = frozenset({Domain.STREAMING})
 _MAX_RESOLVED_INPUT_DEPTH = 64
 _MAX_RESOLVED_INPUT_VALUES = 10_000
+
+
+def _freeze_json_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return MappingProxyType(
+            {key: _freeze_json_value(item) for key, item in value.items()}
+        )
+    if isinstance(value, list):
+        return tuple(_freeze_json_value(item) for item in value)
+    return value
+
+
+@dataclass(frozen=True)
+class ResolvedRankingExecution:
+    """One engine-produced resolved-ranking call and its exact inputs.
+
+    This is an in-process correlation value for tracing, not authentication.
+    Its intent and constraint mappings are deeply immutable snapshots, and its
+    candidate copies are kept separate from the mutable response models.
+    """
+
+    domain: Domain
+    resolved_intent: Mapping[str, Any]
+    constraints: Mapping[str, Any]
+    candidates: Tuple[Item, ...]
+    response: RankingResponse
 
 
 class DomainRankingEngine:
@@ -74,6 +102,67 @@ class DomainRankingEngine:
         produced by the in-process orchestration/normalization path; this
         method is not an external authentication boundary.
         """
+        response, _, _, _, _ = self._rank_resolved_components(
+            domain=domain,
+            resolved_intent=resolved_intent,
+            constraints=constraints,
+            candidates=candidates,
+        )
+        return response
+
+    def rank_resolved_execution(
+        self,
+        *,
+        domain: Domain,
+        resolved_intent: Mapping[str, Any],
+        constraints: Mapping[str, Any],
+        candidates: Sequence[Item],
+    ) -> ResolvedRankingExecution:
+        """Rank once and retain the exact snapshotted inputs for tracing.
+
+        The returned ``response`` is produced by the same implementation as
+        :meth:`rank_resolved`.  The additional envelope only prevents trace
+        construction from pairing that response with different prepared
+        intent, constraints, or candidate inputs.
+        """
+        (
+            response,
+            selected_domain,
+            checked_intent,
+            checked_constraints,
+            checked_candidates,
+        ) = self._rank_resolved_components(
+            domain=domain,
+            resolved_intent=resolved_intent,
+            constraints=constraints,
+            candidates=candidates,
+        )
+        candidate_copies = tuple(
+            self._snapshot_item(candidate, path=f"candidates[{index}]")
+            for index, candidate in enumerate(checked_candidates)
+        )
+        return ResolvedRankingExecution(
+            domain=selected_domain,
+            resolved_intent=_freeze_json_value(checked_intent),
+            constraints=_freeze_json_value(checked_constraints),
+            candidates=candidate_copies,
+            response=response,
+        )
+
+    def _rank_resolved_components(
+        self,
+        *,
+        domain: Domain,
+        resolved_intent: Mapping[str, Any],
+        constraints: Mapping[str, Any],
+        candidates: Sequence[Item],
+    ) -> Tuple[
+        RankingResponse,
+        Domain,
+        Dict[str, Any],
+        Dict[str, Any],
+        Sequence[Item],
+    ]:
         try:
             selected_domain = Domain(domain)
         except (TypeError, ValueError) as exc:
@@ -110,7 +199,7 @@ class DomainRankingEngine:
                 "resolved_intent.intent_type must be a nonblank string"
             )
 
-        return self._rank_with_resolved_intent(
+        response = self._rank_with_resolved_intent(
             domain=selected_domain,
             adapter=adapter,
             candidates=checked_candidates,
@@ -120,6 +209,13 @@ class DomainRankingEngine:
             mode_used=RankingMode.ADVANCED,
             intent_parsing_ms=0.0,
             isolate_adapter_inputs=True,
+        )
+        return (
+            response,
+            selected_domain,
+            checked_intent,
+            checked_constraints,
+            checked_candidates,
         )
 
     def _adapter_for(self, domain: Optional[Domain]) -> DomainAdapter:

@@ -10,6 +10,7 @@ from intent_engine.adapters.streaming import StreamingAdapter
 from intent_engine.core.domain_engine import (
     DIVERSITY_PENALTY,
     DomainRankingEngine,
+    ResolvedRankingExecution,
 )
 from intent_engine.schemas import (
     Domain,
@@ -161,6 +162,53 @@ def _ranked_payload(response):
 
 
 class TestResolvedRankingBoundary:
+    def test_execution_envelope_binds_exact_snapshotted_inputs_and_response(self):
+        engine = DomainRankingEngine({Domain.STREAMING: StreamingAdapter()})
+        resolved = {
+            "intent_type": "calm",
+            "energy_level": 0.2,
+            "metadata": {"source": "prepared"},
+        }
+        constraints = {"maturity_gate": "kids"}
+        candidates = [
+            _item("kids", 0.7, maturity="kids"),
+            _item("adult", 0.9, maturity="adult"),
+        ]
+
+        execution = engine.rank_resolved_execution(
+            domain=Domain.STREAMING,
+            resolved_intent=resolved,
+            constraints=constraints,
+            candidates=candidates,
+        )
+        replay = engine.rank_resolved(
+            domain=Domain.STREAMING,
+            resolved_intent=resolved,
+            constraints=constraints,
+            candidates=candidates,
+        )
+
+        assert isinstance(execution, ResolvedRankingExecution)
+        assert execution.domain == Domain.STREAMING
+        assert dict(execution.resolved_intent) == resolved
+        assert dict(execution.constraints) == constraints
+        assert _ranked_payload(execution.response) == _ranked_payload(replay)
+        assert [item.model_dump() for item in execution.candidates] == [
+            item.model_dump() for item in candidates
+        ]
+
+        resolved["energy_level"] = 1.0
+        resolved["metadata"]["source"] = "mutated"
+        constraints.clear()
+        candidates[0].attributes["maturity"] = "adult"
+
+        assert execution.resolved_intent["energy_level"] == 0.2
+        assert execution.resolved_intent["metadata"]["source"] == "prepared"
+        assert dict(execution.constraints) == {"maturity_gate": "kids"}
+        assert execution.candidates[0].attributes["maturity"] == "kids"
+        with pytest.raises(TypeError):
+            execution.resolved_intent["energy_level"] = 0.5
+
     def test_resolved_intent_bypasses_adapter_resolution(self):
         adapter = _TrackingStreamingAdapter(fail_on_resolve=True)
         engine = DomainRankingEngine({Domain.STREAMING: adapter})

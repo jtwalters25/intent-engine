@@ -8,14 +8,25 @@ from intent_engine.agentic.capabilities import (
 )
 from intent_engine.agentic.schemas import (
     MAX_PLAN_STEPS,
+    CandidateSafetyDecision,
     ConstraintSource,
     ContextInterpretation,
     ExecutionTrace,
     GoalRequest,
+    IntentApplicationTrace,
     IntentConstraint,
     IntentPlan,
     IntentStep,
     OutcomeEvent,
+    RankedCandidateStatus,
+    RankedCandidateTrace,
+    RankingDecisionTrace,
+    RankingMultiplierTrace,
+    RankingScoreTrace,
+    TraceLatency,
+    TraceValidationIssue,
+    TraceValidationResult,
+    TraceValidationStatus,
 )
 from intent_engine.agentic.planner import (
     DEFAULT_HORIZON_MINUTES,
@@ -47,9 +58,15 @@ from intent_engine.agentic.validator import (
     ValidationIssue,
     canonical_plan_json,
 )
+from intent_engine.agentic.trace import (
+    ExecutionTraceBuilder,
+    TraceBuildError,
+    canonical_execution_decision_json,
+)
 
 __all__ = [
     "ActivePlanStep",
+    "CandidateSafetyDecision",
     "MAX_PLAN_STEPS",
     "ConstraintSource",
     "ContextInterpretation",
@@ -57,6 +74,7 @@ __all__ = [
     "DomainCapabilities",
     "ExecutionTrace",
     "GoalRequest",
+    "IntentApplicationTrace",
     "IntentConstraint",
     "IntentPlan",
     "IntentPlanValidator",
@@ -79,9 +97,21 @@ __all__ = [
     "RULE_BASED_PLANNER_VERSION",
     "SUPPORTED_OBJECTIVES",
     "SUPPORTED_NORMALIZATION_DOMAINS",
+    "RankedCandidateStatus",
+    "RankedCandidateTrace",
+    "RankingDecisionTrace",
+    "RankingMultiplierTrace",
+    "RankingScoreTrace",
+    "TraceBuildError",
+    "TraceLatency",
+    "TraceValidationIssue",
+    "TraceValidationResult",
+    "TraceValidationStatus",
+    "ExecutionTraceBuilder",
     "DEFAULT_HORIZON_MINUTES",
     "ValidationIssue",
     "ValueKind",
     "ValueRule",
     "canonical_plan_json",
+    "canonical_execution_decision_json",
 ]

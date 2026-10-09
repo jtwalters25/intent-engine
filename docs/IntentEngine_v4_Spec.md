@@ -999,35 +999,76 @@ without evidence.
 
 # 19. Execution Trace
 
-Every V4 request should generate a trace.
+The target architecture should make every V4 request observable. Phase 4
+implements the successful-execution case: one trace is constructed after a
+typed plan has crossed the deterministic execution boundary and produced a
+typed ranking response. Requests that fail before those artifacts exist need a
+separate partial-lifecycle/failure trace contract and remain deferred.
 
 ```python
 class ExecutionTrace(BaseModel):
-
     trace_id: str
-
     goal_request: GoalRequest
-
     interpretation: ContextInterpretation
-
     plan: IntentPlan
-
-    validation_results: list
-
+    validation_results: list[TraceValidationResult]
     active_step: IntentStep
-
-    safety_decisions: list
-
-    ranking_trace: Any
-
+    intent_application: IntentApplicationTrace
+    safety_decisions: list[CandidateSafetyDecision]
+    ranking_trace: RankingDecisionTrace
     outcome_events: list[OutcomeEvent]
-
-    latency: dict[str, float]
+    latency: TraceLatency
 ```
 
-This is a major engineering artifact.
+The nested Phase 4 contracts distinguish:
 
-The system should be inspectable from request to result.
+- the canonical intent selected by orchestration;
+- adapter-ready intent that was actually applied;
+- authoritative hard constraints that were actually supplied to ranking;
+- observational signals that were deliberately not supplied to ranking;
+- the passed plan-execution validation receipt;
+- per-candidate generic hard-gate evidence; and
+- ordered ranking, multiplier, diversity, score, status, and explanation data.
+
+`CandidateSafetyDecision` records only the generic blocked flag and block reason
+already emitted by the deterministic ranker. The current adapter contract does
+not identify which individual constraint caused a block, so the trace MUST NOT
+invent that attribution.
+
+`ExecutionTraceBuilder` constructs this object from the exact typed
+`GoalRequest`, `ContextInterpretation`, `IntentPlan`, `PreparedPlanExecution`,
+and `ResolvedRankingExecution` supplied by the in-process caller. The additive
+`DomainRankingEngine.rank_resolved_execution` seam ranks once and returns that
+correlation envelope with the exact snapshotted applied intent, constraints,
+input candidates, and response. The legacy `rank_resolved` return type and
+behavior remain unchanged.
+
+The builder makes bounded, revalidated snapshots, requires the engine-captured
+intent and constraints to match `PreparedPlanExecution`, and verifies plan,
+domain, active-step, candidate input/output, rank, score, and blocked-evidence
+coherence. Safety decisions include response rank so repeated candidate IDs can
+remain distinguishable without imposing a new ranking restriction. The builder
+is observational: it does not invoke plan validation, normalization, an
+adapter, or ranking, and neither correlation envelope is proof that externally
+supplied data was authenticated.
+
+The caller supplies `trace_id`, `engine_version`, and `adapter_version`.
+Phase 4 records the nonblank version labels needed for replay analysis but does
+not discover or authenticate them. Only the ranking pipeline currently emits
+timing data, so `TraceLatency.ranking_total_ms` is copied from the existing
+ranking response rather than being presented as end-to-end lifecycle latency.
+
+`canonical_execution_decision_json(trace)` provides stable canonical JSON for
+the deterministic decision fields. It intentionally excludes `trace_id`,
+latency, and outcome events because generated identity, wall-clock measurement,
+and later observations are not part of deterministic ranking equivalence.
+
+The Phase 4 builder creates traces with an empty `outcome_events` collection.
+Outcome ingestion, plan-level versus step-level event identity, evaluation, and
+the observe/advance/complete lifecycle remain Phase 8 work.
+
+This is a major engineering artifact: a completed execution is inspectable from
+request through deterministic ranking without changing ranking behavior.
 
 ---
 
@@ -1379,6 +1420,14 @@ the ranking output MUST be reproducible.
 The planner itself does not need to be deterministic.
 
 The **execution layer does**.
+
+Phase 4 expresses that distinction with
+`canonical_execution_decision_json`. Two successful traces built from
+equivalent execution evidence have identical canonical decision JSON even when
+their caller-supplied trace identifiers or measured latency differ. Outcome
+events are also excluded because they describe later observations, not the
+ranking decision. Engine and adapter version labels remain inside the canonical
+decision so a version change cannot be mistaken for an equivalent replay.
 
 This distinction should be documented prominently.
 
@@ -1849,9 +1898,9 @@ Prophecy Agent, and frontend remain unchanged.
 
 ## Phase 4 — Execution Trace
 
-Implement full tracing.
+Implement typed tracing for a completed deterministic execution.
 
-**Done:**
+**Done (successful-execution scope):**
 
 One object explains the entire lifecycle:
 
@@ -1863,6 +1912,29 @@ request
 → safety
 → ranking
 ```
+
+`ExecutionTraceBuilder` snapshots already-produced in-process artifacts and
+constructs typed validation, intent-application, safety, ranking, and latency
+records. Applied adapter intent, applied authoritative hard constraints, and
+observational signals remain separate. Candidate safety records preserve the
+ranker's generic blocked evidence and response position without claiming
+unsupported per-constraint causality. Ranking records include the full input
+candidate snapshots, ordered output candidates, score breakdowns,
+explanations, and caller-supplied engine and adapter version labels.
+
+`DomainRankingEngine.rank_resolved_execution` supplies the exact in-process
+ranking correlation envelope consumed by the builder. It delegates to the same
+resolved-ranking implementation as `rank_resolved`; the existing method and
+all scoring behavior remain unchanged.
+
+Canonical decision JSON excludes the generated trace identifier, measured
+latency, and outcome events. The builder does not execute or re-execute any
+validator, normalizer, adapter, or ranker and does not change deterministic
+ranking behavior.
+
+Phase 4 does not yet trace failed/partial requests, accept outcome events,
+persist or retrieve traces, define redaction/retention policy, or expose a V4
+API. Those concerns remain assigned to the later phases that own them.
 
 ---
 
