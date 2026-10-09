@@ -107,10 +107,10 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
    one response page into candidates with explicit provenance. Live credentials,
    provider terms/display review, and multi-provider retrieval composition remain
    later readiness/service work.
-6. **Backend API done (Phase 5); frontend pending.** `POST /discover/search` and
-   `POST /discover/feedback` are live via a self-contained `discover/router.py`
-   (mounted with one `include_router` in `api.py`, mirroring the V4 router). The
-   Discover frontend (`Discover.tsx`, §15) is Phase 6 and not started.
+6. **Done.** Backend API (Phase 5) via a self-contained `discover/router.py`
+   (one `include_router` in `api.py`, mirroring the V4 router); frontend (Phase
+   6) at `frontend/src/pages/Discover.tsx` on the `/discover` route, with a
+   zod-validated `discoverApi.ts` client.
 7. **Done (Phase 7).** `evaluation/baselines.py` — relevance arm, LLM-only arm
    (injected client), and a faithful `intent_engine` arm bridge; feeds the
    existing `metrics.py` + `decide()`. The real LLM client is deferred (needs a
@@ -187,8 +187,12 @@ One phase at a time (spec §20); do not auto-implement later phases.
   `include_router` in `api.py` (isolated from legacy/V4, mirroring `api_v4`). 12
   tests (pipeline + TestClient, mocked providers, no live calls); full suite
   **1110 passed**.
-- [ ] **Phase 6 — Frontend.** `Discover.tsx` + components (input, results, why,
-  source links, compare, feedback).
+- [x] **Phase 6 — Frontend.** `discoverApi.ts` (zod-validated client: `/discover/
+  search` + `/discover/feedback`, timeout-bounded, no fabricated fallback) and
+  `pages/Discover.tsx` on the `/discover` route: query/location/budget form,
+  ranked results with status + score, grounded explanation text + evidence-tinted
+  claim badges, source links, and a separate "needs verification" section. 10
+  frontend tests (client + page); full frontend suite **26 passed**.
 - [x] **Phase 7 — Feedback + evaluation.** `evaluation/baselines.py`: relevance
   arm (keyword/popularity, asserts nothing), LLM-only arm (injected `LLMClient`,
   real client deferred), and a faithful `intent_engine` arm that asserts only
