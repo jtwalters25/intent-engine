@@ -17,15 +17,27 @@ from pydantic import ValidationError
 
 from intent_engine.agentic.schemas import (
     MAX_PLAN_STEPS,
+    CandidateSafetyDecision,
     ConstraintSource,
     ContextInterpretation,
     ExecutionTrace,
     GoalRequest,
+    IntentApplicationTrace,
     IntentConstraint,
     IntentPlan,
     IntentStep,
     OutcomeEvent,
+    RankedCandidateStatus,
+    RankedCandidateTrace,
+    RankingDecisionTrace,
+    RankingMultiplierTrace,
+    RankingScoreTrace,
+    TraceLatency,
+    TraceValidationIssue,
+    TraceValidationResult,
+    TraceValidationStatus,
 )
+from intent_engine.schemas import Domain, Item, RankingMode
 
 
 NOW = datetime(2026, 10, 6, 19, 0, tzinfo=timezone.utc)
@@ -113,17 +125,71 @@ def _interpretation(**overrides):
 
 def _trace(**overrides):
     plan = _plan()
+    candidate = RankedCandidateTrace(
+        item=Item(
+            item_id="bluey",
+            title="Bluey",
+            attributes={"maturity": "kids", "calm_score": 0.9},
+            base_score=0.8,
+            category="animation",
+            price=2.5,
+            popularity_score=0.9,
+            quality_score=0.95,
+        ),
+        rank=1,
+        final_score=0.8,
+        status=RankedCandidateStatus.NEUTRAL,
+        explanation="Ranked by the deterministic streaming engine",
+        score_breakdown=RankingScoreTrace(
+            base_score=0.8,
+            multipliers=RankingMultiplierTrace(
+                context=1.0,
+                profile=1.0,
+                urgency=1.0,
+                cost=1.0,
+                prophecy=1.0,
+            ),
+            diversity_penalty=0.0,
+            final_score=0.8,
+            blocked=False,
+        ),
+    )
     values = {
         "trace_id": "trace_123",
         "goal_request": _goal_request(),
         "interpretation": _interpretation(),
         "plan": plan,
-        "validation_results": [{"status": "valid"}],
+        "validation_results": [
+            TraceValidationResult(
+                stage="plan_execution_boundary",
+                status=TraceValidationStatus.PASSED,
+                evaluated_at=NOW,
+                plan_id=plan.plan_id,
+                domain=plan.domain,
+            )
+        ],
         "active_step": plan.steps[0],
-        "safety_decisions": [],
-        "ranking_trace": {"engine": "domain"},
+        "intent_application": IntentApplicationTrace(
+            domain=plan.domain,
+            canonical_intent={"energy": 0.5, "tone": "calm"},
+            applied_intent={"energy_level": 0.5, "intent_type": "calm"},
+            applied_hard_constraints={"maturity_gate": "kids"},
+            observational_signals={"tone": "calm"},
+        ),
+        "safety_decisions": [
+            CandidateSafetyDecision(candidate_id="bluey", rank=1, blocked=False)
+        ],
+        "ranking_trace": RankingDecisionTrace(
+            domain=Domain.STREAMING,
+            mode_used=RankingMode.ADVANCED,
+            intent_type="calm",
+            engine_version="domain-ranking-v3",
+            adapter_version="streaming-v3",
+            input_candidates=[candidate.item],
+            ranked_candidates=[candidate],
+        ),
         "outcome_events": [],
-        "latency": {"total_ms": 1.0},
+        "latency": TraceLatency(ranking_total_ms=1.0),
     }
     values.update(overrides)
     return ExecutionTrace(**values)
@@ -433,7 +499,8 @@ class TestOutcomeAndTraceContracts:
             )
 
     def test_execution_trace_nests_all_contracts(self):
-        plan = _plan()
+        trace = _trace()
+        plan = trace.plan
         event = OutcomeEvent(
             event_type="CONTENT_STARTED",
             timestamp=NOW + timedelta(minutes=1),
@@ -441,72 +508,191 @@ class TestOutcomeAndTraceContracts:
             step_id=plan.steps[0].step_id,
             metadata={"candidate_id": "bluey"},
         )
-        trace = ExecutionTrace(
-            trace_id="trace_123",
-            goal_request=_goal_request(),
-            interpretation=_interpretation(),
-            plan=plan,
-            validation_results=[{"status": "valid"}],
-            active_step=plan.steps[0],
-            safety_decisions=[{"constraint": "maturity_gate", "allowed": True}],
-            ranking_trace={"engine": "domain", "version": "v3"},
-            outcome_events=[event],
-            latency={"total_ms": 4.2, "validation_ms": 0.2},
-        )
+        trace.outcome_events = [event]
 
         assert trace.plan == plan
         assert trace.active_step == plan.steps[0]
         assert trace.outcome_events == [event]
+        assert trace.validation_results[0].status == TraceValidationStatus.PASSED
+        assert trace.intent_application.observational_signals == {"tone": "calm"}
+        assert trace.ranking_trace.ranked_candidates[0].item.category == "animation"
+
+    @pytest.mark.parametrize(
+        "result",
+        [
+            {
+                "stage": "plan_execution_boundary",
+                "status": "passed",
+                "evaluated_at": NOW,
+                "plan_id": "plan_123",
+                "domain": "streaming",
+                "issues": [
+                    {"code": "unexpected", "path": "plan", "message": "bad"}
+                ],
+            },
+            {
+                "stage": "plan_execution_boundary",
+                "status": "failed",
+                "evaluated_at": NOW,
+                "plan_id": "plan_123",
+                "domain": "streaming",
+                "issues": [],
+            },
+        ],
+        ids=["passed-with-issue", "failed-without-issue"],
+    )
+    def test_validation_status_and_issues_must_agree(self, result):
+        with pytest.raises(ValidationError):
+            TraceValidationResult.model_validate(result)
+
+    def test_failed_validation_result_accepts_typed_issue(self):
+        result = TraceValidationResult(
+            stage="plan_execution_boundary",
+            status=TraceValidationStatus.FAILED,
+            evaluated_at=NOW,
+            plan_id="plan_123",
+            domain=Domain.STREAMING,
+            issues=[
+                TraceValidationIssue(
+                    code="expired_plan",
+                    path="expires_at",
+                    message="plan has expired",
+                )
+            ],
+        )
+
+        assert result.issues[0].code == "expired_plan"
+
+    def test_applied_and_observational_signal_names_must_be_disjoint(self):
+        with pytest.raises(ValidationError, match="overlap"):
+            IntentApplicationTrace(
+                domain=Domain.STREAMING,
+                canonical_intent={"tone": "calm"},
+                applied_intent={"tone": "calm"},
+                applied_hard_constraints={},
+                observational_signals={"tone": "calm"},
+            )
+
+    def test_safety_decision_records_only_generic_block_evidence(self):
+        decision = CandidateSafetyDecision(
+            candidate_id="adult-title",
+            rank=1,
+            blocked=True,
+            reason="Hard constraint violated",
+        )
+
+        assert decision.model_dump(mode="json") == {
+            "candidate_id": "adult-title",
+            "rank": 1,
+            "blocked": True,
+            "reason": "Hard constraint violated",
+        }
+        with pytest.raises(ValidationError):
+            CandidateSafetyDecision(
+                candidate_id="adult-title",
+                rank=1,
+                blocked=True,
+                reason="Hard constraint violated",
+                constraint="maturity_gate",
+            )
+
+    @pytest.mark.parametrize("blocked", [0, 1, "true"])
+    def test_safety_decision_blocked_flag_is_strict(self, blocked):
+        with pytest.raises(ValidationError):
+            CandidateSafetyDecision(candidate_id="one", rank=1, blocked=blocked)
+
+    def test_blocked_score_requires_zero_score_and_reason(self):
+        multipliers = RankingMultiplierTrace(
+            context=1.0,
+            profile=0.0,
+            urgency=1.0,
+            cost=1.0,
+            prophecy=1.0,
+        )
+        with pytest.raises(ValidationError):
+            RankingScoreTrace(
+                base_score=1.0,
+                multipliers=multipliers,
+                diversity_penalty=0.0,
+                final_score=0.1,
+                blocked=True,
+                block_reason="Hard constraint violated",
+            )
+        with pytest.raises(ValidationError):
+            RankingScoreTrace(
+                base_score=1.0,
+                multipliers=multipliers,
+                diversity_penalty=0.0,
+                final_score=0.0,
+                blocked=True,
+            )
+
+    def test_duplicate_candidate_ids_remain_traceable_by_rank(self):
+        candidate = _trace().ranking_trace.ranked_candidates[0]
+        duplicate = candidate.model_copy(deep=True)
+        duplicate.rank = 2
+
+        trace = RankingDecisionTrace(
+            domain=Domain.STREAMING,
+            mode_used=RankingMode.ADVANCED,
+            intent_type="calm",
+            engine_version="domain-ranking-v3",
+            adapter_version="streaming-v3",
+            input_candidates=[candidate.item, duplicate.item],
+            ranked_candidates=[candidate, duplicate],
+        )
+
+        assert [entry.item.item_id for entry in trace.ranked_candidates] == [
+            "bluey",
+            "bluey",
+        ]
+        assert [entry.rank for entry in trace.ranked_candidates] == [1, 2]
+
+    def test_ranking_trace_requires_contiguous_response_order(self):
+        candidate = _trace().ranking_trace.ranked_candidates[0]
+
+        candidate.rank = 2
+        with pytest.raises(ValidationError, match="contiguous"):
+            RankingDecisionTrace(
+                domain=Domain.STREAMING,
+                mode_used=RankingMode.ADVANCED,
+                intent_type="calm",
+                engine_version="domain-ranking-v3",
+                adapter_version="streaming-v3",
+                input_candidates=[candidate.item],
+                ranked_candidates=[candidate],
+            )
+
+    def test_trace_rejects_extra_latency_stage(self):
+        with pytest.raises(ValidationError):
+            _trace(
+                latency={"ranking_total_ms": 1.0, "validation_ms": 0.2}
+            )
 
     def test_trace_rejects_negative_latency(self):
-        plan = _plan()
         with pytest.raises(ValidationError):
-            ExecutionTrace(
-                trace_id="trace_123",
-                goal_request=_goal_request(),
-                interpretation=_interpretation(),
-                plan=plan,
-                validation_results=[],
-                active_step=plan.steps[0],
-                safety_decisions=[],
-                ranking_trace={},
-                outcome_events=[],
-                latency={"total_ms": -0.1},
-            )
+            _trace(latency={"ranking_total_ms": -0.1})
 
     @pytest.mark.parametrize("duration", [True, False, "1.2"])
     def test_trace_rejects_boolean_and_string_latency(self, duration):
         with pytest.raises(ValidationError):
-            _trace(latency={"total_ms": duration})
+            _trace(latency={"ranking_total_ms": duration})
 
     def test_huge_integer_latency_is_a_validation_error(self):
         with pytest.raises(ValidationError):
-            _trace(latency={"total_ms": 10**10000})
+            _trace(latency={"ranking_total_ms": 10**10000})
 
-    @pytest.mark.parametrize(
-        "bad_value",
-        [object(), ("tuple",), float("nan"), float("inf"), float("-inf")],
-        ids=["object", "tuple", "nan", "positive-infinity", "negative-infinity"],
-    )
-    def test_nested_non_json_trace_values_are_rejected(self, bad_value):
-        with pytest.raises(ValidationError):
-            _trace(ranking_trace={"nested": [{"bad": bad_value}]})
-
-    @pytest.mark.parametrize("field", ["validation_results", "safety_decisions"])
-    def test_nested_non_json_trace_list_values_are_rejected(self, field):
-        with pytest.raises(ValidationError):
-            _trace(**{field: [{"nested": {"bad": float("nan")}}]})
-
-    @pytest.mark.parametrize(
-        "bad_value",
-        [_deeply_nested_value(), _cyclic_mapping()],
-        ids=["excessive-depth", "cycle"],
-    )
-    def test_excessively_nested_or_cyclic_trace_data_is_a_validation_error(
-        self, bad_value
-    ):
-        with pytest.raises(ValidationError):
-            _trace(ranking_trace={"nested": bad_value})
+    def test_trace_rejects_misaligned_safety_evidence(self):
+        with pytest.raises(ValidationError, match="align"):
+            _trace(
+                safety_decisions=[
+                    CandidateSafetyDecision(
+                        candidate_id="other",
+                        rank=1,
+                        blocked=False,
+                    )
+                ]
+            )
 
 
 class TestContractSerialization:
@@ -533,19 +719,13 @@ class TestContractSerialization:
         assert restored == contract
 
     def test_execution_trace_json_round_trip(self):
-        plan = _plan()
-        trace = ExecutionTrace(
-            trace_id="trace_round_trip",
-            goal_request=_goal_request(),
-            interpretation=_interpretation(),
-            plan=plan,
-            validation_results=[{"status": "valid"}],
-            active_step=plan.steps[0],
-            safety_decisions=[],
-            ranking_trace=None,
-            outcome_events=[],
-            latency={"total_ms": 1.0},
-        )
+        trace = _trace(trace_id="trace_round_trip")
 
         restored = ExecutionTrace.model_validate_json(trace.model_dump_json())
         assert restored == trace
+        restored_item = restored.ranking_trace.ranked_candidates[0].item
+        assert isinstance(restored_item, Item)
+        assert restored_item.category == "animation"
+        assert restored_item.price == 2.5
+        assert restored_item.popularity_score == 0.9
+        assert restored_item.quality_score == 0.95

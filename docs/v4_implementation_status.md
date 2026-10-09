@@ -2,20 +2,27 @@
 
 ## Current status
 
-The Phase 3 deterministic plan-to-ranking path and its multi-step execution
-criterion are complete for the streaming pilot. Phase 3C adds an internal,
-keyword-only `DomainRankingEngine.rank_resolved` seam that consumes the
-adapter-ready intent and authoritative hard constraints prepared by the
-orchestrator. The legacy
-`rank(RankingRequest)` path now delegates only its scoring stage to the same
-private implementation; its intent resolution, response metadata, hard gates,
-scoring formulas, diversity behavior, adapters, and `/rank` API remain
-unchanged. The original Phase 3 heading also named Prophecy integration; that
-runtime merge is an explicit, safety-motivated deviation until context
-precedence is specified.
+Phase 4 successful-execution tracing is complete. The streaming pilot can now
+snapshot one completed in-process Phase 3 execution into a typed
+`ExecutionTrace` covering the supplied goal and interpretation, validated plan,
+selected step, canonical and applied intent, authoritative hard constraints,
+observational signals, generic candidate safety evidence, deterministic ranking
+details, and measured ranking-pipeline latency.
 
-Verification completed with 765 passing backend tests (274 pre-V4, 447 through
-Phase 3B, and 44 Phase 3C tests) plus the existing passing frontend test.
+`ExecutionTraceBuilder` is observational. It contract-revalidates and snapshots its
+typed inputs, checks that their plan, domain, step, intent, rank, score, and
+blocked evidence agree, and does not call validation, normalization, an adapter,
+or ranking. It consumes the new engine-produced `ResolvedRankingExecution`,
+which correlates the exact resolved intent, hard constraints, input candidates,
+and response from one `rank_resolved_execution` call.
+`canonical_execution_decision_json` provides deterministic replay material
+while excluding the caller-supplied trace ID, measured latency, and outcome
+events. Ranking behavior, existing APIs, Prophecy, and the frontend remain
+unchanged.
+
+The last recorded pre-Phase-4 verification baseline was 765 passing backend
+tests plus the existing passing frontend test. Phase 4 verification is
+described in the test section below.
 
 ## Completed scope
 
@@ -106,6 +113,35 @@ Phase 3B, and 44 Phase 3C tests) plus the existing passing frontend test.
 - Demonstrated planner-to-orchestrator-to-ranking execution for the streaming
   wind-down plan at T+0, T+25, and T+50 with deterministic replay and an
   authoritative kids maturity gate applied at every step.
+- Replaced the loose Phase 1 trace internals with typed validation,
+  intent-application, candidate-safety, ranking-multiplier, ranking-score,
+  ranked-candidate, ranking-decision, and latency contracts.
+- Added `ExecutionTraceBuilder` for a completed successful execution. It accepts
+  exact typed artifacts already produced in process, takes bounded defensive
+  snapshots, and fails closed on cross-artifact domain, plan, active-step,
+  applied-intent, hard-constraint, candidate input/output, score, rank-order, or
+  blocked-evidence mismatches.
+- Added the additive `DomainRankingEngine.rank_resolved_execution` seam. It
+  executes the same resolved-ranking implementation once and returns a frozen
+  `ResolvedRankingExecution` correlation envelope containing exact snapshotted
+  intent, constraints, full input candidates, and the resulting response.
+  Existing `rank_resolved` callers and ranking behavior remain unchanged.
+- Kept canonical intent, adapter-ready applied intent, applied authoritative
+  hard constraints, and deliberately non-applied observational signals in
+  separate trace fields.
+- Recorded only generic per-candidate hard-gate evidence. The current adapter
+  protocol does not identify which individual hard constraint caused a block,
+  so Phase 4 does not invent per-constraint causality. Safety records include
+  output rank so repeated item IDs remain distinguishable.
+- Required caller-supplied nonblank engine and adapter version labels in the
+  ranking decision record. The builder records but does not discover or
+  authenticate these labels.
+- Added `canonical_execution_decision_json`, which produces stable sorted JSON
+  for the decision fields and deliberately excludes `trace_id`, latency, and
+  outcome events.
+- Kept Phase 4 traces in process and success-only. The builder emits an empty
+  outcome-event collection and adds no API, persistence, retrieval, redaction,
+  retention, failed-attempt trace, or outcome-lifecycle behavior.
 
 ## Files added
 
@@ -193,6 +229,29 @@ Modified:
 No adapter, legacy `RankingEngine`, Prophecy Agent, API, schema, planner, LLM,
 or frontend behavior was modified for Phase 3C.
 
+## Phase 4 files added or modified
+
+Added:
+
+- `backend/intent_engine/agentic/trace.py`
+- `backend/tests/agentic/test_trace.py`
+
+Modified:
+
+- `backend/intent_engine/agentic/__init__.py`
+- `backend/intent_engine/agentic/schemas.py`
+- `backend/intent_engine/core/domain_engine.py`
+- `backend/tests/agentic/test_schemas.py`
+- `backend/tests/core/test_domain_engine_resolved.py`
+- `docs/IntentEngine_v4_Spec.md`
+- `docs/v4_implementation_status.md`
+
+No adapter, legacy `RankingEngine`, planner, normalizer, orchestrator, Prophecy
+Agent, LLM, API, or frontend behavior was modified for Phase 4. The domain
+engine change is an additive execution-correlation return path over the shared
+resolved-ranking implementation; existing `rank` and `rank_resolved` behavior
+and return types remain unchanged.
+
 ## Tests added
 
 The Phase 1 tests cover:
@@ -272,6 +331,28 @@ diversity behavior. End-to-end tests execute a streaming plan at T+0, T+25,
 and T+50, reproduce identical ranked results, quarantine observational
 signals, and verify that an adult candidate is marked blocked at every step.
 
+The Phase 4 tests cover strict nested trace contracts; validation-status and
+issue consistency; applied-versus-observational isolation; generic blocked
+evidence with duplicate-ID-safe ranking positions; full input/output candidate
+preservation and contiguous rank order; finite score, multiplier, and latency
+values; JSON round trips with the full `Item` replay fields; construction from
+a real planner/orchestrator/ranker execution envelope;
+defensive snapshots against later caller mutation; rejection of malformed or
+cross-lifecycle plan, domain, step, intent, candidate, score, and safety data;
+caller-supplied trace and version metadata; and stable canonical decision JSON
+that excludes trace ID, measured latency, and outcome events.
+
+Current Phase 4 verification:
+
+- Phase 4 trace-builder tests: **25 passed**.
+- Trace contract tests: **107 passed**.
+- Resolved-ranking boundary tests: **43 passed**.
+- All agentic tests: **478 passed**.
+- Full backend suite: **795 passed**.
+- Frontend suite: **1 passed**.
+- Combined repository test total: **796 passed**.
+- Python bytecode compilation: **passed**.
+
 ## Phase 2 default behavior
 
 The planner uses defaults only when the corresponding value is absent; the
@@ -317,6 +398,14 @@ safe default for them.
   orchestrator's normalized result, and its hard-constraint dictionary retains
   only the authority established by the separate application-owned constraint
   channel. The method is not exposed through an API.
+- **Trace evidence:** `ExecutionTraceBuilder` is an in-process observer, not an
+  authority boundary. The caller must supply the exact goal, interpretation,
+  plan, prepared execution, and engine-produced `ResolvedRankingExecution` from
+  one execution. The engine envelope correlates its exact snapshotted applied
+  intent, constraints, input candidates, and response; the builder additionally
+  requires those applied inputs to match the prepared execution. Neither Python
+  type is external authentication, and the builder does not verify
+  caller-supplied version labels.
 
 ## Phase 3A normalization behavior
 
@@ -432,8 +521,8 @@ constraints or timestamps.
   gaps and folds; naive timestamps preserve their prior deterministic behavior.
 - **Prepared step snapshot:** `PreparedPlanExecution.active_step` uses a frozen
   `ActivePlanStep` projection instead of exposing the mutable Pydantic
-  `IntentStep`. Phase 4 can still record the selected step without permitting
-  the prepared execution envelope to become internally inconsistent.
+  `IntentStep`. Phase 4 copies that snapshot into a revalidated `IntentStep` and
+  requires it to match exactly one step in the traced plan.
 - **Resolved response compatibility:** The existing `RankingResponse` requires
   a legacy `Intent` and supports `mode_used`, although the resolved seam does
   not receive a legacy request. Phase 3C projects only the normalized
@@ -448,6 +537,49 @@ constraints or timestamps.
   body into a private method used by both `rank()` and `rank_resolved()`.
   Formula, hard-gate, call-order, diversity, explanation, and response behavior
   are intentionally preserved rather than reimplemented.
+- **Successful executions only:** The target statement that every V4 request is
+  observable is broader than the Phase 1 envelope, which requires a plan,
+  active step, and ranking result. Phase 4 therefore implements a strict trace
+  for completed successful executions. A failed or partial request needs a
+  separate lifecycle shape rather than fabricated missing artifacts.
+- **Observational trace builder:** `ExecutionTraceBuilder` never reruns plan
+  validation, normalization, an adapter, or ranking. A
+  `PreparedPlanExecution` is the correlation value returned by the in-process
+  preparation boundary, not independent proof of validation or authority. The
+  builder records that boundary as completed and validates coherence of the
+  supplied evidence without creating new execution authority.
+- **Typed trace stages:** The spec's generic `validation_results`,
+  `safety_decisions`, `ranking_trace`, and latency dictionary are replaced with
+  explicit contracts. `IntentApplicationTrace` keeps canonical intent, applied
+  adapter intent, applied authoritative hard constraints, and observational
+  signals separate, and rejects overlap between applied and observational
+  signal names.
+- **Phase 1 trace migration:** Phase 4 intentionally tightens the exported
+  `ExecutionTrace` constructor and serialized nested shapes. The field names
+  remain recognizable, but generic dictionaries and `Any` ranking data are no
+  longer accepted, and `intent_application` is now required. No existing API
+  exposed the Phase 1 trace envelope.
+- **Generic safety evidence:** Existing adapters return only a blocked boolean,
+  while the ranker emits a generic block reason. Candidate safety trace entries
+  therefore record exactly that evidence and do not claim which constraint
+  caused the block.
+- **Explicit replay versions:** The existing engine and adapter expose no
+  version identifiers. Phase 4 requires nonblank caller-supplied engine and
+  adapter version labels rather than deriving unstable class names or silently
+  omitting replay metadata. The labels are recorded, not authenticated.
+- **Deterministic decision projection:** Full traces include volatile IDs,
+  measured latency, and a future-facing outcome-event list.
+  `canonical_execution_decision_json` excludes those three fields while
+  retaining request, interpretation, plan, validation, active step, intent
+  application, safety evidence, ranked decisions, and replay versions.
+- **Ranking-only latency:** The current ranking response measures intent
+  parsing, scoring, diversity, and their ranking-pipeline total. Phase 4 names
+  that aggregate `ranking_total_ms`; it does not claim to measure goal
+  interpretation, planning, validation, or full request latency.
+- **Empty outcome collection:** The builder always creates a successful
+  execution trace with no outcome events. This preserves the Phase 1 envelope
+  without choosing plan-level versus step-level event identity or implementing
+  Phase 8 lifecycle behavior.
 
 ## Technical debt and risks
 
@@ -468,7 +600,7 @@ constraints or timestamps.
 - **Capability versus consumption:** Some canonical V4 signals, such as
   streaming `tone` and `runtime_preference`, are valid plan vocabulary but are
   not consumed by the current adapter. Phase 3A leaves them explicitly
-  observational; Phase 4 traces must distinguish observed from applied data.
+  observational; Phase 4 now records them separately from applied intent.
 - **Planner/adapter vocabulary boundary:** The planner emits canonical V4
   `energy` (0-to-1) and `viewer`, while streaming adapters consume
   `energy_level` and `viewer_profile`, and Prophecy Agent emits `energyLevel`
@@ -513,37 +645,55 @@ constraints or timestamps.
 - **Streaming-only behavior:** The objective names are broadly useful, but
   reusing the current templates for other domains would invent unreviewed
   semantics. Domain-specific templates remain necessary.
-- **Loose trace internals:** `validation_results` and `safety_decisions` remain
-  generic dictionaries and `ranking_trace` remains unconstrained because the
-  spec does not define their structures. These should become explicit
-  contracts during Phase 4.
+- **Trace composition provenance:** `rank_resolved_execution` correlates the
+  exact snapshotted ranking inputs and response from one engine call, and the
+  builder requires those inputs to match the prepared execution. These Python
+  value containers are still not authentication or tamper-proof audit storage.
+  Keep them behind the in-process application composition boundary; Phase 5
+  must not accept prepared or normalized trace evidence from a client.
+- **Replay-version provenance:** Engine and adapter version labels are currently
+  caller supplied because those components expose no stable version contract.
+  They are useful replay metadata, not authenticated build provenance. A later
+  release/version policy should define their authoritative source.
+- **Success-only trace shape:** `ExecutionTrace` represents a completed
+  execution and therefore requires a plan, active step, and ranking. Planning,
+  validation, orchestration, or ranking failures need a separate partial trace
+  contract before the target of tracing every request can be met.
+- **Trace privacy and retention:** Successful traces contain goal text, explicit
+  and inferred context, full candidate items and attributes, and ranking
+  evidence. No persistence, retrieval, redaction, retention, or access-control
+  policy exists yet. Those policies must be defined before Phase 5 exposes
+  traces outside the process.
 - **Plan-level outcome events:** The proposed `OutcomeEvent` requires a
   `step_id`, although events such as `PLAN_CANCELLED` and `SESSION_ENDED` may be
   plan-scoped. This should be resolved before the outcome API is introduced.
 
-## Completed Phase 3 ranking path and recommended Phase 4
+## Completed Phase 4 trace path and recommended Phase 5
 
-Phase 3 now composes the deterministic streaming path without making the
-orchestrator a ranker:
+The successful streaming path is now observable without making the orchestrator
+a ranker or the trace builder an executor:
 
 1. `IntentOrchestrator` revalidates the plan at trusted execution time, selects
    the active step, applies context precedence, and normalizes intent and
    separately authoritative hard constraints;
-2. `DomainRankingEngine.rank_resolved` snapshots only the adapter-ready intent,
-   hard constraints, and candidates, then bypasses raw intent resolution;
+2. `DomainRankingEngine.rank_resolved_execution` snapshots the adapter-ready
+   intent, hard constraints, and candidates, bypasses raw intent resolution,
+   and returns the response with those exact correlation inputs;
 3. both the legacy and resolved ranking paths execute the same hard gates,
-   multipliers, diversity pass, explanations, and response construction; and
-4. a wind-down plan executes at T+0, T+25, and T+50 with deterministic replay
-   and the kids maturity gate blocking adult content at every step.
+   multipliers, diversity pass, explanations, and response construction;
+4. `ExecutionTraceBuilder` snapshots the completed preparation and ranking
+   artifacts into one coherent typed successful-execution trace; and
+5. `canonical_execution_decision_json` separates replayable decision evidence
+   from generated trace identity, measured latency, and later outcomes.
 
-The recommended Phase 4 is a separate execution-trace PR. First replace the
-generic `validation_results`, `safety_decisions`, and `ranking_trace` payloads
-with explicit typed structures that distinguish interpreted, validated,
-normalized, applied, observational, and blocked data. Then build traces from
-trusted in-process execution values without changing ranking behavior or
-exposing a V4 API. Keep deterministic decision data separate from measured
-latency and generated trace identifiers. Resolve plan-level versus step-level
-event identity before adding lifecycle events.
+The recommended Phase 5 is a separate API/application-boundary PR. It must
+reconstruct authenticated profile and policy context server-side, compose the
+existing plan/preparation/ranking/trace path in process, and define error
+semantics without treating client-authored normalized values as authority.
+Before trace retrieval is exposed, Phase 5 also needs explicit persistence,
+redaction, retention, and access-control decisions. Failure traces and outcome
+lifecycle behavior should remain separate rather than weakening the completed
+success-trace contract.
 
 ## Intentionally deferred
 
@@ -551,12 +701,16 @@ event identity before adding lifecycle events.
 - Runtime Prophecy merging until its precedence relative to plan state, the
   active step, and authenticated profile context is explicitly defined.
 - Normalization for music, e-commerce, ride matching, or food delivery.
-- Full execution-trace creation and strongly typed trace internals (Phase 4).
+- Failed and partial lifecycle traces for requests that do not reach a completed
+  ranking.
 - `/v4/plan`, `/v4/execute`, `/v4/observe`, plan retrieval, and trace retrieval
   APIs (Phase 5).
+- Trace persistence, retrieval storage, redaction, retention, and access-control
+  policy (required before externally exposing traces).
 - Frontend Agentic Mode and frontend-to-backend execution wiring (Phase 6).
 - Optional LLM planner, malformed-model-output recovery, and runtime safe
   fallback behavior (Phase 7).
-- Outcome evaluation and the observe/advance/complete loop (Phase 8).
+- Outcome-event ingestion, plan-level versus step-level event identity, outcome
+  evaluation, and the observe/advance/complete loop (Phase 8).
 - Any change to ranking formulas, diversity behavior, hard safety gates,
   candidate selection, existing domain-adapter execution, or existing APIs.
