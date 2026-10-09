@@ -45,9 +45,11 @@ copy to dedupe later.
 - `backend/intent_engine/agentic/` — **V4 intent layer** (see §2).
 - `backend/intent_engine/discover/` — **this pilot.** Present today:
   `schemas.py` (Phase 1), `providers/` (Phase 2), `normalization.py` +
-  `constraints.py` (Phase 3), and the `evaluation/` subpackage (§16 reference).
-- Full backend suite is green: **928 tests passing** (`cd backend && python3 -m
-  pytest tests/ -q`).
+  `constraints.py` (Phase 3), `signals.py` (Phase 4, in progress), and the
+  `evaluation/` subpackage (§16 reference).
+- Branch `feat/discover-foundation` is rebased onto current `main` (V4 Phase
+  5/6). Full backend suite green: **1083 tests passing** (`cd backend && python3
+  -m pytest tests/ -q`).
 
 ## 2. Current V4 implementation status
 
@@ -90,11 +92,12 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
    paths preserved). Verified single-class identity; full suite 928 passed.
 2. **No Discover→V4 translation boundary** (`service.py` / `ranking_bridge.py`).
    `DiscoveryRequest` is not yet translated into a validated `IntentPlan`.
-3. **No ranking signals** for Discover (`family_friendly`, `educational_value`,
-   `budget_fit`, `distance_fit`, `schedule_fit`, `duration_fit`) — each needs a
-   documented meaning, range, deterministic calc, missing-value handling, and
-   tests (spec §10). These are the intent→signal normalization boundary and
-   belong to **Phase 4**, not candidate normalization.
+3. **Done (Phase 4, `signals.py`).** All six ranking signals (`family_friendly`,
+   `educational_value`, `budget_fit`, `distance_fit`, `schedule_fit`,
+   `duration_fit`) — deterministic 0–1 fit from candidate evidence, explicit
+   missing-value handling (neutral + `known=False`), per-signal evidence basis
+   for explanation grounding (spec §10). Remaining Phase 4: the adapter + ranking
+   + fingerprint (see plan).
 4. **Done (Phase 3).** Candidate deduplication (`normalization.py`, spec §9) and
    three-state hard constraints (`constraints.py`: PASS/FAIL/UNKNOWN with the
    budget-basis distinction, spec §11).
@@ -157,9 +160,13 @@ One phase at a time (spec §20); do not auto-implement later phases.
   price-basis handling, minimum age, availability; `filter_candidates` partitions
   verified / needs-verification / excluded). 26 tests; full suite **928 passed**.
   The six ranking signals moved to Phase 4; gap #1 dedup resolved (see §4).
-- [ ] **Phase 4 — Intent Engine integration.** Translate `DiscoveryRequest` →
-  `IntentPlan` via `RuleBasedIntentPlanner` + `PlanValidator`, bridge to the
-  deterministic ranker; assert reproducible `ranking_fingerprint`.
+- [~] **Phase 4 — Intent Engine integration (in progress).** Slice 1 done:
+  `signals.py` (the six ranking signals) + `constraints.verified_total_range`
+  shared helper; 19 tests. Remaining: a narrowly-scoped Discover `DomainAdapter`
+  inside `discover/` (compute_multipliers from signals, apply_hard_constraints via
+  `constraints.py`, grounded `explain()` per §13.1, `diversity_key`), deterministic
+  ranking, and a reproducible `ranking_fingerprint`. Kept out of shared `core/` and
+  `adapters/` to stay conflict-free with Codex's V4 work.
 - [ ] **Phase 5 — Discover API.** `/discover` + feedback endpoints; end-to-end
   mocked pipeline test (request→intent→retrieval→normalize→constraints→rank→
   explain→response).

@@ -150,51 +150,57 @@ def _party_count(request: DiscoveryRequest) -> Optional[int]:
     return None
 
 
-def _budget_check(
+def verified_total_range(
     candidate: DiscoveryCandidate, request: DiscoveryRequest
-) -> Optional[ConstraintCheck]:
-    if request.budget_total is None:
-        return None
-    budget = request.budget_total
+) -> "tuple[Optional[Decimal], Optional[Decimal]]":
+    """The (min, max) verified total cost in money, or (None, None) if it cannot
+    be established.
 
-    basis_value, basis_status = _verified_value(candidate, "price_basis")
-    price_min, price_min_status = _verified_value(candidate, "price_min")
-
-    def unknown(detail: str, status: Optional[EvidenceStatus]) -> ConstraintCheck:
-        return ConstraintCheck(
-            name="budget",
-            state=ConstraintState.UNKNOWN,
-            stated=True,
-            detail=detail,
-            evidence_status=status,
-        )
-
+    A total requires a VERIFIED price basis and a VERIFIED price; per-head bases
+    additionally require a party size. Shared by the budget hard constraint and
+    the ``budget_fit`` ranking signal so both apply one definition of a "known
+    total cost" (spec section 12) — never a guess.
+    """
+    basis_value, _ = _verified_value(candidate, "price_basis")
     if not isinstance(basis_value, str) or basis_value == "unknown":
-        return unknown("price basis is not verified; total cost unknown", basis_status)
+        return None, None
+    price_min, _ = _verified_value(candidate, "price_min")
     if not isinstance(price_min, Decimal):
-        return unknown("price is not verified; total cost unknown", price_min_status)
+        return None, None
 
     def to_total(amount: Decimal) -> Optional[Decimal]:
         if basis_value in _PER_HEAD_BASES:
             party = _party_count(request)
-            if party is None:
-                return None
-            return amount * party
+            return amount * party if party is not None else None
         if basis_value in _TOTAL_BASES:
             return amount
         return None  # unrecognized basis -> cannot establish a total
 
     min_total = to_total(price_min)
     if min_total is None:
-        return unknown(
-            "cannot establish total cost (party size or price basis missing)",
-            EvidenceStatus.VERIFIED,
-        )
-
+        return None, None
     price_max, _ = _verified_value(candidate, "price_max")
     max_total = to_total(price_max) if isinstance(price_max, Decimal) else min_total
     if max_total is None:
         max_total = min_total
+    return min_total, max_total
+
+
+def _budget_check(
+    candidate: DiscoveryCandidate, request: DiscoveryRequest
+) -> Optional[ConstraintCheck]:
+    if request.budget_total is None:
+        return None
+    budget = request.budget_total
+    min_total, max_total = verified_total_range(candidate, request)
+    if min_total is None:
+        return ConstraintCheck(
+            name="budget",
+            state=ConstraintState.UNKNOWN,
+            stated=True,
+            detail="total cost not established (price basis or amount unverified)",
+            evidence_status=None,
+        )
 
     if min_total > budget:
         return ConstraintCheck(
