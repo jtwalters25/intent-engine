@@ -2,6 +2,50 @@
 
 ## Current status
 
+Phase 6 streaming frontend integration is complete. `/demo` now offers Agentic
+Mode backed by the real `/v4/plan` and `/v4/execute` endpoints. Signal Mode
+retains the existing local slider experience. Agentic Mode renders the backend
+plan, assumptions, constraints, temporal steps, ranked candidates, safety
+evidence, score breakdowns, explanations, and execution reference. It does not
+plan or rank locally. Request failures are explicit; future steps cannot be
+selected with a simulated client clock.
+
+## Phase 6 implementation record (2026-10-09)
+
+Added `frontend/src/data/agenticApi.ts`,
+`frontend/src/components/demo/AgenticMode.tsx`, two frontend test files, and
+synthetic shared response fixtures. Updated `frontend/src/pages/Demo.tsx`,
+`frontend/vite.config.ts`, `frontend/README.md`, this status document, and the
+V4 spec. The unmerged `feat/frontend-agentic-mode` mock branch remains separate;
+its mock planner and tests were not adopted into this API-backed feature.
+
+Transport validates backend responses with Zod, maps the existing streaming
+catalog into full backend Item inputs, and sends only text/domain/context for
+planning or plan ID/candidates for execution. It has a 15-second request
+deadline and aborts work on mode unmount. Create/refresh operations clear stale
+ranking, show loading state, and retain a successfully created plan after an
+execution error so users can retry.
+
+Verification: **931 backend tests**, **16 frontend tests**, production Vite
+build, changed-file ESLint, and diff checks passed. A real headless browser
+smoke test through Vite's proxy received 200 for plan, execute, and refresh;
+adult content was blocked. Desktop/mobile screenshots were inspected, with no
+horizontal overflow at 390px. TypeScript checking reports one pre-existing
+`CuratedHomeScreen.tsx:106` LearningFocus error; the same error occurs in the
+primary checkout, and Phase 6 introduces no additional type errors. Dependency
+installation also reports existing lockfile advisories; dependency upgrades
+remain a separate maintenance change.
+
+Deployment requires a reachable Python backend: Vite's development proxy uses
+`V4_BACKEND_URL` (default localhost:8000); production uses a same-origin backend
+route or build-time `VITE_API_BASE_URL`. Static frontend deployment alone does
+not deploy Python. Missing configuration/service availability produces a
+visible error, never a client-side simulation. Server time remains authoritative
+for step selection; automatic polling and outcome lifecycle are deferred.
+
+Recommended next phase: Phase 7 optional LLM planner, with explicit provider
+configuration, deterministic validation, tested invalid-output recovery and
+safe fallback, and LLM disabled by default. Phase 8 owns observe/outcome lifecycle.
 Phase 5B successful streaming execution is complete. `POST /v4/execute` accepts
 only a stored `plan_id` and up to 100 typed candidate items. The application
 re-resolves server-owned identity/profile/policy, verifies the retained context,
@@ -882,7 +926,6 @@ remain separate rather than weakening the completed success-trace contract.
 - Plan/trace retrieval (a later privacy/storage slice) and `/v4/observe` (Phase 8).
 - Trace persistence, retrieval storage, redaction, retention, and access-control
   policy (required before externally exposing traces).
-- Frontend Agentic Mode and frontend-to-backend execution wiring (Phase 6).
 - Optional LLM planner, malformed-model-output recovery, and runtime safe
   fallback behavior (Phase 7).
 - Outcome-event ingestion, plan-level versus step-level event identity, outcome
