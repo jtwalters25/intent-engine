@@ -1,8 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { catalogCandidates, createPlan, executePlan } from '@/data/agenticApi';
+import { advancePlan, observePlan, catalogCandidates, createPlan, executePlan } from '@/data/agenticApi';
 import { platforms } from '@/data/demoPlatforms';
 
-import { plan, execution } from './agenticFixtures';
+import { plan, execution, lifecycle } from './agenticFixtures';
+
+it('sends bounded lifecycle requests without client timestamps or scores', async () => {
+  const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => lifecycle });
+  vi.stubGlobal('fetch', fetch);
+  await advancePlan('plan_test');
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ plan_id: 'plan_test' });
+  await observePlan('plan_test', 'step_one', 'CONTENT_STARTED', 'calm');
+  expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ plan_id: 'plan_test', step_id: 'step_one', event_type: 'CONTENT_STARTED', metadata: { candidate_id: 'calm' } });
+});
+
+it('rejects malformed lifecycle responses', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...lifecycle, plan_status: 'SKIP_POLICY' }) }));
+  await expect(advancePlan('plan_test')).rejects.toThrow('invalid response');
+});
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
 
