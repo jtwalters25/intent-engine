@@ -36,6 +36,16 @@ from intent_engine.discover.evaluation.metrics import (
     user_preference_rate,
     verified_constraint_satisfaction_rate,
 )
+from intent_engine.discover.evaluation.baselines import (
+    LLMArmOutput,
+    LLMClient,
+    candidate_to_snapshot,
+    intent_engine_arm,
+    llm_only_arm,
+    pool_from_candidates,
+    relevance_arm,
+    stated_from_request,
+)
 
 __all__ = [
     "ARM_INTENT_ENGINE",
@@ -43,6 +53,14 @@ __all__ = [
     "ARM_RELEVANCE",
     "ArmResult",
     "AssertedFact",
+    "LLMArmOutput",
+    "LLMClient",
+    "candidate_to_snapshot",
+    "intent_engine_arm",
+    "llm_only_arm",
+    "pool_from_candidates",
+    "relevance_arm",
+    "stated_from_request",
     "AttributeProvenance",
     "CandidateSnapshot",
     "ClaimKind",

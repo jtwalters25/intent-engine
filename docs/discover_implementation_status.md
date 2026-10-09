@@ -49,7 +49,7 @@ copy to dedupe later.
   (Phase 4), `service.py` + `router.py` (Phase 5), and the `evaluation/`
   subpackage (§16 reference).
 - Branch `feat/discover-foundation` is rebased onto current `main` (V4 Phase
-  5/6). Full backend suite green: **1110 tests passing** (`cd backend && python3
+  5/6). Full backend suite green: **1117 tests passing** (`cd backend && python3
   -m pytest tests/ -q`).
 
 ## 2. Current V4 implementation status
@@ -111,7 +111,10 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
    `POST /discover/feedback` are live via a self-contained `discover/router.py`
    (mounted with one `include_router` in `api.py`, mirroring the V4 router). The
    Discover frontend (`Discover.tsx`, §15) is Phase 6 and not started.
-7. **No `evaluation/baselines.py`** — the relevance and LLM-only arms (§16).
+7. **Done (Phase 7).** `evaluation/baselines.py` — relevance arm, LLM-only arm
+   (injected client), and a faithful `intent_engine` arm bridge; feeds the
+   existing `metrics.py` + `decide()`. The real LLM client is deferred (needs a
+   configured gateway); the arm is injectable/mockable.
 
 ## 5. Provider requirements
 
@@ -186,8 +189,14 @@ One phase at a time (spec §20); do not auto-implement later phases.
   **1110 passed**.
 - [ ] **Phase 6 — Frontend.** `Discover.tsx` + components (input, results, why,
   source links, compare, feedback).
-- [ ] **Phase 7 — Feedback + evaluation.** `evaluation/baselines.py` (relevance,
-  LLM-only arms); wire `metrics.py` + `decide()` to the three-arm harness.
+- [x] **Phase 7 — Feedback + evaluation.** `evaluation/baselines.py`: relevance
+  arm (keyword/popularity, asserts nothing), LLM-only arm (injected `LLMClient`,
+  real client deferred), and a faithful `intent_engine` arm that asserts only
+  VERIFIED facts from PASS constraints and caveats unknowns. `candidate_to_snapshot`
+  builds the shared pool; `stated_from_request` maps the hard-constraint subset.
+  Feeds the existing `compute_arm_report`/`decide`. 7 tests (incl. a reckless-LLM
+  case caught by `critical_factual_error_count`, engine scoring 0); full suite
+  **1117 passed**.
 - [ ] **Phase 8 — Pilot readiness.** Deployment, privacy, cost, reliability.
 
 ## Phase 2 completion (2026-10-09)
