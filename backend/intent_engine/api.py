@@ -12,6 +12,7 @@ from .adapters.ride_matching import RideMatchingAdapter
 from .adapters.food_delivery import FoodDeliveryAdapter
 from .adapters.music import MusicAdapter
 from .adapters.ecommerce import EcommerceAdapter
+from .api_v4 import router as v4_router
 import time
 
 app = FastAPI(
@@ -40,6 +41,10 @@ _domain_engine = DomainRankingEngine({
     Domain.MUSIC: MusicAdapter(),
     Domain.ECOMMERCE: EcommerceAdapter(),
 })
+
+# V4 is additive.  Its dependencies and error mapping remain isolated from the
+# legacy `/rank` API so existing request and ranking behavior stays unchanged.
+app.include_router(v4_router)
 
 
 @app.get("/")

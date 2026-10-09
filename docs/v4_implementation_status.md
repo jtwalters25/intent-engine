@@ -2,12 +2,18 @@
 
 ## Current status
 
-Phase 4 successful-execution tracing is complete. The streaming pilot can now
-snapshot one completed in-process Phase 3 execution into a typed
-`ExecutionTrace` covering the supplied goal and interpretation, validated plan,
-selected step, canonical and applied intent, authoritative hard constraints,
-observational signals, generic candidate safety evidence, deterministic ranking
-details, and measured ranking-pipeline latency.
+Phase 5A deterministic plan creation is complete. `POST /v4/plan` now accepts a
+strict natural-language streaming goal request, constructs trusted time and
+session evidence server-side, applies a conservative server-owned public-demo
+kids profile and maturity gate, interprets the supported pilot vocabulary with
+rules only, validates the resulting plan, and stores the exact lifecycle
+artifacts in a bounded process-local registry for the later execute boundary.
+
+The endpoint returns the complete typed `IntentPlan`. It accepts no client
+timestamp, session identity, interpretation, plan, hard constraint, normalized
+intent, candidates, ranking data, or trace metadata. Unsupported or ambiguous
+goals and unsupported context fields fail closed with stable 422 errors. The
+legacy `/rank` route and its deterministic ranking behavior remain unchanged.
 
 `ExecutionTraceBuilder` is observational. It contract-revalidates and snapshots its
 typed inputs, checks that their plan, domain, step, intent, rank, score, and
@@ -20,9 +26,9 @@ while excluding the caller-supplied trace ID, measured latency, and outcome
 events. Ranking behavior, existing APIs, Prophecy, and the frontend remain
 unchanged.
 
-The last recorded pre-Phase-4 verification baseline was 765 passing backend
-tests plus the existing passing frontend test. Phase 4 verification is
-described in the test section below.
+Phase 4 successful-execution tracing remains the in-process execution evidence
+boundary. Phase 5A does not yet expose execution, trace retrieval, or outcome
+observation; those require the separately scoped work documented below.
 
 ## Completed scope
 
@@ -142,6 +148,27 @@ described in the test section below.
 - Kept Phase 4 traces in process and success-only. The builder emits an empty
   outcome-event collection and adds no API, persistence, retrieval, redaction,
   retention, failed-attempt trace, or outcome-lifecycle behavior.
+- Added a deterministic `RuleBasedContextInterpreter` for the streaming pilot.
+  It recognizes only the five existing planner objectives and the canonical
+  `viewer`, `energy`, and `horizon_minutes` context fields, rejects unsupported
+  or ambiguous goals, and never calls an LLM, adapter, or ranker.
+- Added a `V4PlanningService` application boundary. One injected server clock
+  owns goal and plan time, and an injected policy resolver supplies ownership,
+  session identity, protected profile context, and authoritative constraints.
+- Bound the unauthenticated public pilot to a conservative server-owned kids
+  profile and hard kids maturity gate. Client viewer context remains goal input
+  but cannot weaken or replace that profile or policy.
+- Added a bounded, thread-safe, process-local `InMemoryPlanRegistry`. It stores
+  detached snapshots of the goal, effective interpretation, validated plan,
+  profile, authoritative constraints, and owner scope; records expire no later
+  than plan expiry or the configured retention ceiling.
+- Added strict `POST /v4/plan`. The transport accepts only `text`, `domain`, and
+  bounded canonical context; returns the full typed plan; maps expected
+  interpretation and planning failures to stable 422 responses; and returns a
+  generic non-leaking 500 for unexpected faults.
+- Kept `/v4/execute`, `/v4/observe`, plan retrieval, and trace retrieval absent.
+  No request can deserialize a prepared execution, normalized intent, policy
+  authority, ranking result, or trace as trusted state.
 
 ## Files added
 
@@ -252,6 +279,28 @@ engine change is an additive execution-correlation return path over the shared
 resolved-ranking implementation; existing `rank` and `rank_resolved` behavior
 and return types remain unchanged.
 
+## Phase 5A files added or modified
+
+Added:
+
+- `backend/intent_engine/agentic/context_interpreter.py`
+- `backend/intent_engine/agentic/application.py`
+- `backend/intent_engine/api_v4.py`
+- `backend/tests/agentic/test_context_interpreter.py`
+- `backend/tests/agentic/test_application.py`
+- `backend/tests/test_v4_api.py`
+
+Modified:
+
+- `backend/intent_engine/agentic/__init__.py`
+- `backend/intent_engine/api.py` (router inclusion only)
+- `docs/IntentEngine_v4_Spec.md`
+- `docs/v4_implementation_status.md`
+
+No ranking engine, domain engine, adapter, normalizer, orchestrator, Prophecy
+Agent, LLM, existing request contract, or frontend behavior was modified for
+Phase 5A.
+
 ## Tests added
 
 The Phase 1 tests cover:
@@ -353,6 +402,26 @@ Current Phase 4 verification:
 - Combined repository test total: **796 passed**.
 - Python bytecode compilation: **passed**.
 
+The Phase 5A tests cover deterministic interpretation of the five supported
+streaming objectives; natural-language and explicit-context extraction;
+unsupported, conflicting, ambiguous, malformed, and candidate-shaped input;
+server-clock ownership; server profile and hard-policy precedence; immutable
+record snapshots; owner-scoped lookup; bounded capacity; plan/retention expiry;
+collision handling; full plan serialization; stable public 422 errors; generic
+non-leaking 500 errors; rejection of client-authored authority and later-phase
+fields; preservation of `/rank`; and the intentional absence of execute,
+observe, and retrieval routes.
+
+Current Phase 5A verification (2026-10-09): **899 backend tests passed**, including
+104 new interpreter/application/API tests. `git diff --check` passed. No live
+provider or LLM calls were made.
+
+The application derives API plan IDs from the complete goal, owner scope, and
+validated planner output. This preserves deterministic replay at fixed trusted
+time while keeping distinct original goals in separate lifecycle records, even
+when their intent semantics match. Interpreter constraints are checked for
+forged hard or privileged authority before protected-profile reconciliation.
+
 ## Phase 2 default behavior
 
 The planner uses defaults only when the corresponding value is absent; the
@@ -371,6 +440,14 @@ safe default for them.
 
 ## Trust ownership
 
+- **API goal time and session:** `POST /v4/plan` accepts neither a timestamp nor
+  a session identifier. `V4PlanningService` reads one injected aware server
+  clock value and a server-owned planning context, then uses those values for
+  both the retained `GoalRequest` and the generated plan.
+- **Public pilot profile/policy:** until authenticated principals exist, the
+  public V4 route is deliberately bound to one fixed server-owned kids profile
+  and corroborating hard maturity gate. Request context cannot select an adult
+  profile, remove the gate, or manufacture `SYSTEM`/`DOMAIN` authority.
 - **Time:** `RuleBasedIntentPlanner.create_plan` requires `now` from its trusted
   caller and uses it for `created_at`; `expires_at` is calculated from that
   value and the deterministic horizon. Timestamps embedded in interpreted
@@ -486,9 +563,30 @@ constraints or timestamps.
 - **Deterministic identifiers:** The repository has no applicable plan-ID
   convention, so IDs are SHA-256-derived from canonical plan semantics. This
   avoids random IDs breaking deterministic replay.
-- **Interpretation remains out of scope:** Phase 2 accepts a validated
-  `ContextInterpretation`; it does not convert natural language into one. The
-  Phase 2 build-sequence wording was clarified accordingly.
+- **Rules-only interpretation is now narrow:** Phase 2 correctly remained a
+  structured planner. Phase 5A adds the separate target-architecture context
+  interpreter needed by the natural-language API, but only for the five
+  reviewed streaming objectives and three canonical context fields. Unknown or
+  ambiguous goals fail closed; probabilistic/LLM fallback remains Phase 7.
+- **Server-owned API fields:** The target `/v4/plan` example omits the required
+  `GoalRequest.timestamp` and uses `context` rather than the contract's
+  `explicit_context`. Phase 5A keeps the concise transport shape, maps `context`
+  internally, and creates timestamp and session evidence server-side.
+- **Full plan response:** The spec's `/v4/plan` response is an abbreviated
+  projection. Phase 5A returns the complete validated `IntentPlan` at the top
+  level so constraints, state, expiry, planner version, and transition reasons
+  are not silently discarded.
+- **Conservative unauthenticated pilot:** No account principal or profile store
+  exists in the repository. Instead of trusting request context as policy,
+  Phase 5A binds the public route to a fixed kids profile and hard gate. A real
+  authenticated resolver must replace it before multi-profile production use.
+- **Ephemeral plan state:** `/v4/execute` is specified by plan ID but the repo
+  had no plan store. Phase 5A introduces only a bounded, owner-scoped,
+  process-local registry with defensive copies and expiry. It is sufficient to
+  compose Phase 5B in one process, not durable or distributed persistence.
+- **Staged Phase 5 surface:** `/v4/execute` follows in Phase 5B. Plan/trace
+  retrieval remains blocked on storage, redaction, retention, and access
+  control; `/v4/observe` remains blocked on Phase 8 event/lifecycle semantics.
 - **Resolved, not raw, adapter intent:** The proposed spec did not distinguish
   adapter input stages. Phase 3A emits the vocabulary consumed by
   `compute_multipliers`, not the raw vocabulary consumed by `resolve_intent`.
@@ -583,6 +681,21 @@ constraints or timestamps.
 
 ## Technical debt and risks
 
+- **Demo-only identity:** Phase 5A's fixed public owner/session and kids profile
+  are a safe conservative boundary, not authentication. Phase 5B must keep
+  ownership and policy injectable, and production exposure requires a real
+  principal/profile resolver before plans can be isolated per user or tenant.
+- **Process-local plan availability:** The bounded registry loses plans on
+  restart and does not coordinate across workers. It intentionally has no
+  retrieval API. Durable/distributed storage needs explicit encryption,
+  redaction, retention, deletion, collision, and authorization policy.
+- **Objective vocabulary duplication:** The context interpreter and planner
+  both recognize the five pilot objectives. Their constants should move to one
+  non-ranking vocabulary module before either surface expands to new domains.
+- **HTTP deployment limits:** Pydantic caps goal text and bounds nested context,
+  but application-level body-size limits and tightened CORS are still required
+  before authenticated or internet-scale deployment. Existing permissive CORS
+  was preserved to avoid changing the legacy API in this phase.
 - **Capability-registry drift:** Signal and constraint metadata currently lives
   beside, rather than on, domain adapters. It can drift as adapters evolve.
   A later phase should establish one source of truth without making validators
@@ -668,7 +781,7 @@ constraints or timestamps.
   `step_id`, although events such as `PLAN_CANCELLED` and `SESSION_ENDED` may be
   plan-scoped. This should be resolved before the outcome API is introduced.
 
-## Completed Phase 4 trace path and recommended Phase 5
+## Completed Phase 5A plan path and recommended Phase 5B
 
 The successful streaming path is now observable without making the orchestrator
 a ranker or the trace builder an executor:
@@ -686,25 +799,44 @@ a ranker or the trace builder an executor:
 5. `canonical_execution_decision_json` separates replayable decision evidence
    from generated trace identity, measured latency, and later outcomes.
 
-The recommended Phase 5 is a separate API/application-boundary PR. It must
-reconstruct authenticated profile and policy context server-side, compose the
-existing plan/preparation/ranking/trace path in process, and define error
-semantics without treating client-authored normalized values as authority.
-Before trace retrieval is exposed, Phase 5 also needs explicit persistence,
-redaction, retention, and access-control decisions. Failure traces and outcome
-lifecycle behavior should remain separate rather than weakening the completed
-success-trace contract.
+Phase 5A now adds the request-to-plan half of that boundary:
+
+1. a strict transport accepts only goal text, domain, and bounded canonical
+   context;
+2. one trusted server clock and one server-owned profile/policy context create
+   the retained goal evidence;
+3. deterministic interpretation produces a typed, non-authoritative
+   `ContextInterpretation` or fails closed;
+4. protected viewer context and the hard kids gate are applied through separate
+   trusted channels before deterministic planning; and
+5. detached lifecycle snapshots enter a bounded, owner-scoped registry while
+   the complete validated plan is returned to the caller.
+
+The recommended next PR is Phase 5B: `POST /v4/execute`. It should accept only
+`plan_id` and bounded full `Item` candidates, resolve the current principal,
+profile, policy, trusted time, trace ID, and version labels server-side, load
+the exact retained lifecycle record, then compose
+`IntentOrchestrator.prepare_execution` →
+`DomainRankingEngine.rank_resolved_execution` → `ExecutionTraceBuilder` in
+process. The response should be a safe execution projection, not the full
+sensitive trace. Missing and foreign plans should be indistinguishable; known
+expired/pre-start/policy-drift states need stable non-500 semantics.
+
+Trace retrieval still requires explicit durable-storage, redaction, retention,
+and access-control decisions. Failure traces and outcome lifecycle behavior
+remain separate rather than weakening the completed success-trace contract.
 
 ## Intentionally deferred
 
-- Context-interpreter behavior and probabilistic interpretation.
+- Probabilistic/LLM interpretation fallback, confidence escalation, and
+  malformed model-output recovery.
 - Runtime Prophecy merging until its precedence relative to plan state, the
   active step, and authenticated profile context is explicitly defined.
 - Normalization for music, e-commerce, ride matching, or food delivery.
 - Failed and partial lifecycle traces for requests that do not reach a completed
   ranking.
-- `/v4/plan`, `/v4/execute`, `/v4/observe`, plan retrieval, and trace retrieval
-  APIs (Phase 5).
+- `/v4/execute` (Phase 5B), plan/trace retrieval (a later privacy/storage
+  slice), and `/v4/observe` (Phase 8).
 - Trace persistence, retrieval storage, redaction, retention, and access-control
   policy (required before externally exposing traces).
 - Frontend Agentic Mode and frontend-to-backend execution wiring (Phase 6).

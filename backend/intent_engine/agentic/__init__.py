@@ -6,6 +6,11 @@ from intent_engine.agentic.capabilities import (
     ValueKind,
     ValueRule,
 )
+from intent_engine.agentic.context_interpreter import (
+    ContextInterpreter,
+    InterpretationError,
+    RuleBasedContextInterpreter,
+)
 from intent_engine.agentic.schemas import (
     MAX_PLAN_STEPS,
     CandidateSafetyDecision,
@@ -69,6 +74,7 @@ __all__ = [
     "CandidateSafetyDecision",
     "MAX_PLAN_STEPS",
     "ConstraintSource",
+    "ContextInterpreter",
     "ContextInterpretation",
     "DEFAULT_DOMAIN_CAPABILITIES",
     "DomainCapabilities",
@@ -81,6 +87,7 @@ __all__ = [
     "IntentPlanner",
     "IntentOrchestrator",
     "IntentStep",
+    "InterpretationError",
     "NormalizationError",
     "NormalizedAdapterInput",
     "NormalizedProphecyContext",
@@ -94,6 +101,7 @@ __all__ = [
     "PROTECTED_PROFILE_SIGNALS",
     "ProphecyContextNormalizer",
     "RuleBasedIntentPlanner",
+    "RuleBasedContextInterpreter",
     "RULE_BASED_PLANNER_VERSION",
     "SUPPORTED_OBJECTIVES",
     "SUPPORTED_NORMALIZATION_DOMAINS",
