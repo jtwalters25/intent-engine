@@ -6,6 +6,34 @@ assessment that must precede Discover code (spec §20). Last updated 2026-10-09.
 This document is the standing answer to the seven Phase-0 questions. It is kept
 current as phases land so work can resume without re-deriving context.
 
+## Session handoff (2026-10-09, Claude → Codex)
+
+Claude did interim work while Codex was offline. Current branch layout:
+
+- **`feat/frontend-agentic-mode`** (commit `0abfafa`): streaming-demo Agentic
+  Mode only (frontend). Separate deliverable; 8 vitest tests pass. Not Discover.
+- **`feat/discover-foundation`** (commit `1a05477`): Discover spec + this Phase 0
+  doc + **Phase 1 schemas** (`discover/schemas.py`, 33 tests) + the `evaluation/`
+  contracts. Backend suite green at **852 passed**.
+
+Delivered this session: the branch split above, Phase 0 assessment (this doc),
+and Phase 1 schemas. **Phase 2 was started as a scaffold, not finished** — see
+the checklist below.
+
+**Phase 2 scaffold (`discover/providers/base.py`, committed as WIP):** a
+`BaseProvider` template (config validation → single bounded HTTP call → typed
+error translation → per-item-safe parse), an injectable `HttpTransport` seam with
+a real `HttpxTransport` + offline-friendly fake, typed errors
+(`ProviderConfigError`/`ProviderTimeout`/`ProviderRateLimited`/`ProviderResponseError`),
+and `_verified()`/`_extracted()` provenance helpers. It **imports cleanly but has
+no tests yet.** Codex should review and either build on it or replace it — it is a
+suggestion, not a commitment. No `providers/__init__.py`, `ticketmaster.py`,
+`google_places.py`, or `test_providers.py` exist yet.
+
+Follow-up noted (gap #1): `AttributeProvenance`/`EvidenceStatus` are now canonical
+in `discover/schemas.py`; `evaluation/contracts.py` still carries a byte-compatible
+copy to dedupe later.
+
 ## 1. Repository inspection
 
 - `backend/intent_engine/` — legacy ranking core (`schemas`, `simple_ranker`,
@@ -106,9 +134,14 @@ One phase at a time (spec §20); do not auto-implement later phases.
 
 - [x] **Phase 1 — Discover schemas.** `discover/schemas.py` + `test_schemas.py`
   (33 tests). Contracts and validation for request/candidate/provenance/feedback.
-- [ ] **Phase 2 — Providers.** `providers/base.py`, `ticketmaster.py`,
-  `google_places.py` → `DiscoveryCandidate` with correct VERIFIED/EXTRACTED/
-  UNKNOWN provenance; mocked/fixture tests; no live calls.
+- [~] **Phase 2 — Providers (in progress, scaffold only).** `providers/base.py`
+  landed as WIP (see handoff above). Remaining: `providers/__init__.py`,
+  `ticketmaster.py`, `google_places.py` → `DiscoveryCandidate` with correct
+  VERIFIED/EXTRACTED/UNKNOWN provenance (Ticketmaster `priceRanges` → VERIFIED
+  price; Google `price_level` is NOT a dollar total → keep price UNKNOWN; age
+  suitability UNKNOWN unless structured); `test_providers.py` with a mocked
+  transport; no live calls (spec §19). Exit: two providers work under mocked
+  tests.
 - [ ] **Phase 3 — Normalization + constraints.** Dedup; the six Discover signals
   with documented range/calc/missing-value rules; three-state hard constraints
   with budget-basis handling. _Fold in gap #1 (dedupe provenance) here._
