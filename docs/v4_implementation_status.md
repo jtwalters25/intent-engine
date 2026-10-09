@@ -2,6 +2,57 @@
 
 ## Current status
 
+Phase 7 bounded optional LLM assistance is complete. Rules-first interpretation
+now has an opt-in HTTPS gateway seam for messy streaming goals, with strict
+model-output validation and deterministic temporal planning. Default behavior
+remains rules-only. Phase 8 outcome lifecycle is next; it is not started here.
+
+## Phase 7 implementation record (2026-10-09)
+
+Added `backend/intent_engine/agentic/llm_planner.py`,
+`backend/tests/agentic/test_llm_planner.py`, and
+`docs/v4_llm_configuration.md`. Updated agentic exports, application planner
+typing to the existing `IntentPlanner` protocol, the rules interpreter's shared
+input-validation methods, API configuration/worker-pool plan route, this status
+document and the V4 spec. Ranking, domain adapters, legacy LLM adapter,
+frontend, execution API and Discover are unchanged.
+
+The model sees only user text/domain/context and must return a bounded
+`ContextInterpretation`. Rules successes bypass the model. Unsupported or
+ambiguous objective resolution may invoke it; malformed user input remains a
+rejection. Every field is validated before explicit-context merging and trusted
+profile overrides. Unknown signals, candidate selection, forged authority,
+duplicate keys, low confidence and semantic errors trigger neutral fallback.
+Provider failures also fall back without logging provider content or secrets.
+The fallback is one validated step using explicit context, default intent and
+server-owned safety constraints; it claims no inferred objective or confidence.
+
+Deviation from the proposed free-form `LLMIntentPlanner`: model assistance maps
+to the existing five objectives, then reuses `RuleBasedIntentPlanner` templates.
+This avoids a second temporal policy implementation and keeps unsupported
+actions out of execution. Arbitrary model-authored step plans and commercial
+vendor adapters are deferred. The HTTPS gateway is an implemented integration
+contract, not a deployed service; tests use mocks, not a live model.
+
+Configuration is independently disabled by default. Explicit enablement with
+invalid/missing HTTPS endpoint, model or key fails startup. The provider has a
+32 KiB response cap, five-second socket timeout, and no retries or redirects.
+Production still needs privacy review, total gateway deadlines, rate/concurrency
+limits, usage budgets and deployment monitoring. Worker-pool execution prevents
+synchronous model I/O from blocking the API event loop, but is not rate limiting.
+
+Verification: **989 backend tests passed**, including **58 new Phase 7 tests**.
+Coverage includes rules parity/no provider call, malformed/oversized/duplicate
+JSON, signal ranges, unknown fields, conflicting values, forged hard/source
+authority, confidence, explicit-context precedence, unsupported input without
+provider invocation, timeout/429/5xx, redirection prevention, bounded gateway
+payload, deterministic fallback round trips and API plan/execute safety for
+both valid model output and garbage. No live model requests were made. Diff
+checks passed; no existing tests were weakened or skipped.
+
+Next: Phase 8 outcome contracts/ingestion and bounded deterministic lifecycle
+handling. Do not add learning that changes scoring or grants policy authority.
+
 Phase 6 streaming frontend integration is complete. `/demo` now offers Agentic
 Mode backed by the real `/v4/plan` and `/v4/execute` endpoints. Signal Mode
 retains the existing local slider experience. Agentic Mode renders the backend
@@ -43,7 +94,7 @@ not deploy Python. Missing configuration/service availability produces a
 visible error, never a client-side simulation. Server time remains authoritative
 for step selection; automatic polling and outcome lifecycle are deferred.
 
-Recommended next phase: Phase 7 optional LLM planner, with explicit provider
+At Phase 6 handoff, the recommended next phase was Phase 7 optional LLM planner, with explicit provider
 configuration, deterministic validation, tested invalid-output recovery and
 safe fallback, and LLM disabled by default. Phase 8 owns observe/outcome lifecycle.
 Phase 5B successful streaming execution is complete. `POST /v4/execute` accepts
@@ -916,8 +967,8 @@ remain separate rather than weakening the completed success-trace contract.
 
 ## Intentionally deferred
 
-- Probabilistic/LLM interpretation fallback, confidence escalation, and
-  malformed model-output recovery.
+- Arbitrary model-authored temporal plans, vendor-specific SDKs, and model
+  assistance outside the five streaming objectives.
 - Runtime Prophecy merging until its precedence relative to plan state, the
   active step, and authenticated profile context is explicitly defined.
 - Normalization for music, e-commerce, ride matching, or food delivery.
@@ -926,8 +977,6 @@ remain separate rather than weakening the completed success-trace contract.
 - Plan/trace retrieval (a later privacy/storage slice) and `/v4/observe` (Phase 8).
 - Trace persistence, retrieval storage, redaction, retention, and access-control
   policy (required before externally exposing traces).
-- Optional LLM planner, malformed-model-output recovery, and runtime safe
-  fallback behavior (Phase 7).
 - Outcome-event ingestion, plan-level versus step-level event identity, outcome
   evaluation, and the observe/advance/complete loop (Phase 8).
 - Any change to ranking formulas, diversity behavior, hard safety gates,

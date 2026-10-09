@@ -172,7 +172,7 @@ class RuleBasedContextInterpreter:
     """Deterministic interpreter for the bounded V4 streaming vocabulary."""
 
     def interpret(self, goal_request: GoalRequest) -> ContextInterpretation:
-        goal = self._validated_goal(goal_request)
+        goal = self.validate_goal(goal_request)
         if goal.domain != Domain.STREAMING:
             raise InterpretationError(
                 "unsupported_domain",
@@ -180,7 +180,7 @@ class RuleBasedContextInterpreter:
             )
 
         normalized_text = self._normalize_text(goal.text)
-        context = self._validated_explicit_context(goal.explicit_context)
+        context = self.validate_explicit_context(goal.explicit_context)
         objective = self._resolve_objective(normalized_text)
 
         viewer, viewer_source = self._resolve_viewer(normalized_text, context)
@@ -254,7 +254,8 @@ class RuleBasedContextInterpreter:
                 "Deterministic rules produced an invalid interpretation.",
             ) from exc
 
-    def _validated_goal(self, goal_request: Any) -> GoalRequest:
+    def validate_goal(self, goal_request: Any) -> GoalRequest:
+        """Validate and snapshot input before rules or optional model use."""
         if not isinstance(goal_request, GoalRequest):
             raise InterpretationError(
                 "invalid_goal",
@@ -278,10 +279,11 @@ class RuleBasedContextInterpreter:
         normalized = unicodedata.normalize("NFKC", value).casefold()
         return " ".join(normalized.split())
 
-    def _validated_explicit_context(
+    def validate_explicit_context(
         self,
         explicit_context: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        """Validate canonical context independently of objective resolution."""
         context = dict(explicit_context)
         unknown = sorted(set(context) - SUPPORTED_CONTEXT_KEYS)
         if unknown:
