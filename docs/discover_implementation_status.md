@@ -84,14 +84,10 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
 
 ## 4. Integration gaps
 
-1. **Provenance is defined twice.** `discover/schemas.py` is now the canonical
-   home for `AttributeProvenance`/`EvidenceStatus`; `evaluation/contracts.py`
-   still carries a byte-compatible copy (it predates schemas). Follow-up: make
-   evaluation import from `schemas` and delete the duplicate. Low risk — the
-   definitions are identical. NOT done in Phase 3 (to avoid touching the
-   evaluation suite mid-stream); `constraints.py` now adds a third identical
-   `ConstraintState`, so fold all of these into the canonical schema in a
-   dedicated cleanup (or at the start of Phase 4).
+1. **Resolved.** `AttributeProvenance`, `EvidenceStatus`, and `ConstraintState`
+   are defined once in `discover/schemas.py`; `constraints.py` and
+   `evaluation/contracts.py` import and re-export them (back-compatible import
+   paths preserved). Verified single-class identity; full suite 928 passed.
 2. **No Discover→V4 translation boundary** (`service.py` / `ranking_bridge.py`).
    `DiscoveryRequest` is not yet translated into a validated `IntentPlan`.
 3. **No ranking signals** for Discover (`family_friendly`, `educational_value`,
@@ -160,7 +156,7 @@ One phase at a time (spec §20); do not auto-implement later phases.
   `constraints.py` (three-state hard constraints — date window, budget with
   price-basis handling, minimum age, availability; `filter_candidates` partitions
   verified / needs-verification / excluded). 26 tests; full suite **928 passed**.
-  The six ranking signals moved to Phase 4; gap #1 dedup deferred (see §4).
+  The six ranking signals moved to Phase 4; gap #1 dedup resolved (see §4).
 - [ ] **Phase 4 — Intent Engine integration.** Translate `DiscoveryRequest` →
   `IntentPlan` via `RuleBasedIntentPlanner` + `PlanValidator`, bridge to the
   deterministic ranker; assert reproducible `ranking_fingerprint`.
@@ -236,6 +232,6 @@ Known limitation: distance is not a hard constraint here — the request contrac
 carries no strict distance limit and providers return coordinates, not verified
 travel time. Distance stays a Phase 4 ranking signal (`distance_fit`).
 
-Deferred to Phase 4 / cleanup: gap #1 provenance dedup (now three identical
-`ConstraintState`/provenance definitions across `schemas`, `constraints`, and
-`evaluation`).
+Follow-up resolved: gap #1 provenance/`ConstraintState` dedup — `schemas.py` is
+now the single canonical home; `constraints.py` and `evaluation/contracts.py`
+import and re-export. Verified single-class identity; full suite 928 passed.

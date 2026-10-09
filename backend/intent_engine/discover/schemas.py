@@ -83,6 +83,20 @@ class AttributeProvenance(BaseModel):
         return self.status is EvidenceStatus.VERIFIED
 
 
+class ConstraintState(str, Enum):
+    """Three-state hard-constraint result (spec section 11).
+
+    Canonical home for the state shared by ``discover.constraints`` (which
+    produces it) and ``discover.evaluation`` (which scores against it): FAIL only
+    on VERIFIED evidence, UNKNOWN for EXTRACTED/absent evidence, PASS when a
+    VERIFIED attribute satisfies the constraint.
+    """
+
+    PASS = "PASS"
+    FAIL = "FAIL"
+    UNKNOWN = "UNKNOWN"
+
+
 # ---------------------------------------------------------------------------
 # Discovery request (spec section 6)
 # ---------------------------------------------------------------------------

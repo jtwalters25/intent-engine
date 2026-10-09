@@ -23,29 +23,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
 from intent_engine.discover.schemas import (
+    ConstraintState,
     DiscoveryCandidate,
     DiscoveryRequest,
     EvidenceStatus,
 )
-
-
-class ConstraintState(str, Enum):
-    """Three-state hard-constraint result (spec section 11).
-
-    Same semantics as ``evaluation.contracts.ConstraintState`` (dedup follow-up:
-    both should import one canonical enum once the evaluation suite is touched).
-    """
-
-    PASS = "PASS"
-    FAIL = "FAIL"
-    UNKNOWN = "UNKNOWN"
-
 
 # Price-basis values that mean "per participant" (need party size for a total).
 _PER_HEAD_BASES = frozenset({"per_person", "per_ticket"})

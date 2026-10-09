@@ -23,26 +23,19 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from intent_engine.discover.schemas import (
+    AttributeProvenance,
+    ConstraintState,
+    EvidenceStatus,
+)
+
 
 # ---------------------------------------------------------------------------
 # Enumerations
 # ---------------------------------------------------------------------------
-
-class EvidenceStatus(str, Enum):
-    """Provenance of a single attribute value (spec section 7.1)."""
-
-    VERIFIED = "VERIFIED"    # copied from a structured provider field
-    EXTRACTED = "EXTRACTED"  # inferred from unstructured text / classifier / LLM
-    UNKNOWN = "UNKNOWN"      # absent; no value may be asserted
-
-
-class ConstraintState(str, Enum):
-    """Three-state hard-constraint result (spec section 11)."""
-
-    PASS = "PASS"
-    FAIL = "FAIL"
-    UNKNOWN = "UNKNOWN"
-
+# EvidenceStatus, ConstraintState, and AttributeProvenance are imported from
+# discover.schemas (their canonical home) and re-exported here so existing
+# ``evaluation.contracts`` / ``evaluation`` import paths keep working.
 
 class ClaimKind(str, Enum):
     MATCH = "match"
@@ -67,39 +60,7 @@ ARM_INTENT_ENGINE = "intent_engine"
 # ---------------------------------------------------------------------------
 # Evidence contracts (sections 7.1, 13.1)
 # ---------------------------------------------------------------------------
-
-class AttributeProvenance(BaseModel):
-    """Where one attribute came from and how trustworthy it is (section 7.1)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    value: Optional[Any] = None
-    status: EvidenceStatus
-    source: str = Field(..., min_length=1)
-    source_url: str = Field(..., min_length=1)
-    retrieved_at: datetime
-    source_field: Optional[str] = None
-    extractor: Optional[str] = None
-
-    @model_validator(mode="after")
-    def enforce_status_rules(self) -> "AttributeProvenance":
-        if self.status is EvidenceStatus.UNKNOWN:
-            if self.value is not None:
-                raise ValueError("UNKNOWN attributes must not carry a value")
-        else:
-            if self.value is None:
-                raise ValueError(f"{self.status.value} attributes require a value")
-        if self.status is EvidenceStatus.VERIFIED and not self.source_field:
-            raise ValueError("VERIFIED attributes require a structured source_field")
-        if self.status is EvidenceStatus.EXTRACTED and not self.extractor:
-            raise ValueError("EXTRACTED attributes require an extractor id")
-        return self
-
-    @property
-    def is_fact(self) -> bool:
-        """Only VERIFIED attributes may be presented as fact."""
-        return self.status is EvidenceStatus.VERIFIED
-
+# AttributeProvenance is imported from discover.schemas (canonical) above.
 
 class CandidateSnapshot(BaseModel):
     """Minimal evidence view of a candidate used by evaluation.
