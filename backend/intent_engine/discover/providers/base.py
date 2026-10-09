@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -99,9 +100,9 @@ class HttpxTransport:
                 async with httpx.AsyncClient() as client:
                     resp = await client.get(url, params=dict(params), timeout=timeout)
         except httpx.TimeoutException as exc:  # pragma: no cover - needs network
-            raise TimeoutError(str(exc)) from exc
+            raise TimeoutError("HTTP request timed out") from exc
         except httpx.HTTPError as exc:  # pragma: no cover - needs network
-            raise ProviderResponseError(f"transport error: {exc}") from exc
+            raise ProviderResponseError("HTTP transport failed") from exc
 
         try:
             payload = resp.json()
@@ -138,6 +139,10 @@ class BaseProvider(ABC):
         max_results: int = 20,
         clock: Clock = _utcnow,
     ) -> None:
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
+            raise ProviderConfigError("timeout must be a finite positive number")
+        if isinstance(max_results, bool) or not isinstance(max_results, int) or not 1 <= max_results <= 200:
+            raise ProviderConfigError("max_results must be an integer between 1 and 200")
         self._transport = transport
         self._api_key = api_key if api_key is not None else os.environ.get(self.env_key)
         self._timeout = timeout
@@ -149,13 +154,21 @@ class BaseProvider(ABC):
     async def search(self, request: DiscoveryRequest) -> List[DiscoveryCandidate]:
         """Return normalized candidates for a request, or raise a typed error."""
         self._require_key()
+        request = DiscoveryRequest.model_validate(request.model_dump())
         url, params = self._build_request(request)
         retrieved_at = self._clock()
+        if not isinstance(retrieved_at, datetime) or retrieved_at.utcoffset() is None:
+            raise ProviderConfigError("provider clock must return an aware datetime")
         try:
-            response = await self._transport.get(url, params=params, timeout=self._timeout)
+            response = await asyncio.wait_for(
+                self._transport.get(url, params=params, timeout=self._timeout),
+                timeout=self._timeout,
+            )
         except (asyncio.TimeoutError, TimeoutError) as exc:
             logger.warning("provider_timeout provider=%s timeout=%s", self.name, self._timeout)
             raise ProviderTimeout(f"{self.name}: request timed out") from exc
+        except Exception as exc:
+            raise ProviderResponseError(f"{self.name}: transport failed") from exc
 
         if response.status_code == 429:
             logger.warning("provider_rate_limited provider=%s", self.name)
@@ -168,9 +181,11 @@ class BaseProvider(ABC):
                 f"{self.name}: error status {response.status_code}"
             )
 
-        candidates = list(self._parse(response.payload, request, retrieved_at))
-        if len(candidates) > self._max_results:
-            candidates = candidates[: self._max_results]
+        candidates = []
+        for candidate in self._parse(response.payload, request, retrieved_at):
+            candidates.append(candidate)
+            if len(candidates) == self._max_results:
+                break
         logger.info(
             "provider_ok provider=%s candidates=%s", self.name, len(candidates)
         )
@@ -191,11 +206,11 @@ class BaseProvider(ABC):
     # -- shared helpers ----------------------------------------------------
 
     def _require_key(self) -> str:
-        if not self._api_key:
+        if not isinstance(self._api_key, str) or not self._api_key.strip():
             raise ProviderConfigError(
                 f"{self.name}: missing API key (set {self.env_key})"
             )
-        return self._api_key
+        return self._api_key.strip()
 
     def _candidate_id(self, provider_id: str) -> str:
         return f"{self.name}:{provider_id}"
@@ -217,14 +232,26 @@ class BaseProvider(ABC):
                 candidate = build(item)
             except Exception as exc:  # noqa: BLE001 - skip one bad item, keep the rest
                 logger.warning(
-                    "provider_item_skipped provider=%s index=%s error=%s",
+                    "provider_item_skipped provider=%s index=%s error_type=%s",
                     self.name,
                     index,
-                    exc,
+                    type(exc).__name__,
                 )
                 continue
             if candidate is not None:
                 yield candidate
+
+    def _evidence(self, values: Mapping[str, Any], fields: Mapping[str, str], *, source_url: str, retrieved_at: datetime) -> dict:
+        """Record absent values explicitly; structured fields alone are facts."""
+        return {
+            key: (
+                self._verified(value, source_field=fields[key], source_url=source_url, retrieved_at=retrieved_at)
+                if value is not None else AttributeProvenance(
+                    value=None, status=EvidenceStatus.UNKNOWN, source=self.name,
+                    source_url=source_url, retrieved_at=retrieved_at,
+                )
+            ) for key, value in values.items()
+        }
 
     def _verified(
         self,

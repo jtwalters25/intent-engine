@@ -1,4 +1,4 @@
-# Discover Pilot — Implementation Status (Phase 0)
+# Discover Pilot — Implementation Status
 
 _Spec: `IntentEngine_Discover_Pilot_Spec.md`. Phase 0 is the mandatory repository
 assessment that must precede Discover code (spec §20). Last updated 2026-10-09._
@@ -45,7 +45,7 @@ copy to dedupe later.
 - `backend/intent_engine/agentic/` — **V4 intent layer** (see §2).
 - `backend/intent_engine/discover/` — **this pilot.** Present today:
   `schemas.py` (Phase 1) and the `evaluation/` subpackage (§16 reference).
-- Full backend suite is green: **852 tests passing** (`cd backend && python3 -m
+- Full backend suite is green: **902 tests passing** (`cd backend && python3 -m
   pytest tests/ -q`).
 
 ## 2. Current V4 implementation status
@@ -97,8 +97,10 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
    calc, missing-value handling, and tests (spec §10).
 4. **No three-state hard constraints** (`constraints.py`) implementing PASS /
    FAIL / UNKNOWN with the budget-basis distinction (spec §11).
-5. **No providers** (`providers/ticketmaster.py`, `providers/google_places.py`)
-   or their normalization into `DiscoveryCandidate` with provenance (§7, §8).
+5. **Providers completed in Phase 2.** Ticketmaster and Google Places normalize
+   one response page into candidates with explicit provenance. Live credentials,
+   provider terms/display review, and multi-provider retrieval composition remain
+   later readiness/service work.
 6. **No API endpoints** (`/discover`, feedback) or frontend `Discover.tsx` (§14,
    §15). Note the frontend **Agentic Mode** demo on this branch is a separate
    streaming-pilot artifact, not the Discover frontend.
@@ -134,14 +136,16 @@ One phase at a time (spec §20); do not auto-implement later phases.
 
 - [x] **Phase 1 — Discover schemas.** `discover/schemas.py` + `test_schemas.py`
   (33 tests). Contracts and validation for request/candidate/provenance/feedback.
-- [~] **Phase 2 — Providers (in progress, scaffold only).** `providers/base.py`
-  landed as WIP (see handoff above). Remaining: `providers/__init__.py`,
-  `ticketmaster.py`, `google_places.py` → `DiscoveryCandidate` with correct
-  VERIFIED/EXTRACTED/UNKNOWN provenance (Ticketmaster `priceRanges` → VERIFIED
-  price; Google `price_level` is NOT a dollar total → keep price UNKNOWN; age
-  suitability UNKNOWN unless structured); `test_providers.py` with a mocked
-  transport; no live calls (spec §19). Exit: two providers work under mocked
-  tests.
+- [x] **Phase 2 — Providers.** Both async adapters work with injected mocked
+  transport. Ticketmaster structured price ranges carry VERIFIED evidence;
+  descriptions carry EXTRACTED evidence; absent prices, age suitability,
+  availability, duration, and price basis remain UNKNOWN. Google `price_level`
+  is retained only as opaque metadata, never converted to dollars. Tests cover
+  configuration, environment keys, parse/provenance, missing data, timeouts,
+  HTTP/application rate limits and errors, safe partial results, malformed
+  envelopes, bounded results, request parameters, source URLs, and injection
+  text. Full suite: **902 passed**, including **50 provider tests**, entirely
+  offline. Phase 3 has not started.
 - [ ] **Phase 3 — Normalization + constraints.** Dedup; the six Discover signals
   with documented range/calc/missing-value rules; three-state hard constraints
   with budget-basis handling. _Fold in gap #1 (dedupe provenance) here._
@@ -156,3 +160,37 @@ One phase at a time (spec §20); do not auto-implement later phases.
 - [ ] **Phase 7 — Feedback + evaluation.** `evaluation/baselines.py` (relevance,
   LLM-only arms); wire `metrics.py` + `decide()` to the three-arm harness.
 - [ ] **Phase 8 — Pilot readiness.** Deployment, privacy, cost, reliability.
+
+## Phase 2 completion (2026-10-09)
+
+Files added: `providers/__init__.py`, `providers/ticketmaster.py`,
+`providers/google_places.py`, and `tests/discover/test_providers.py`.
+Files updated: `providers/base.py`, backend dependency manifests (httpx is now
+a runtime dependency), and this status document. Ranking, V4 planning, APIs,
+frontend, and evaluation contracts were not changed.
+
+The suggested base scaffold was retained and hardened: finite positive timeout,
+bounded `max_results` (1–200), an enforced async deadline, aware retrieval clock,
+typed sanitized transport failures, and per-item logs that omit external text
+and secrets. Each search makes one HTTP call; pagination and details calls are
+intentionally absent. Parsing preserves provider order and skips invalid items.
+No cache, persistence, filtering, ranking, or cross-provider deduplication was
+added. Date-only requests use Ticketmaster's local date window and do not invent
+a timezone. Its coordinate filter currently uses documented but deprecated
+`latlong`; migration to `geoPoint` is a readiness follow-up.
+
+Google uses official Text Search (Legacy), matching the scaffold's GET seam and
+the specified `price_level` response. Live rollout must verify project
+eligibility or migrate to Places API (New); this phase makes no live calls.
+Search has no canonical listing URL, so a Google Maps link is constructed from
+the structured place ID and name. `html_attributions` are preserved. Places
+display/attribution and retention restrictions must be resolved before UI or
+evaluation persistence; the adapters do not store provider content. See
+[Google Text Search documentation](https://developers.google.com/maps/documentation/places/web-service/legacy/search-text)
+and [Places policies](https://developers.google.com/maps/documentation/places/web-service/policies).
+
+Gap #1 remains a **Phase 3 follow-up**: deduplicate
+`AttributeProvenance`/`EvidenceStatus` in `evaluation/contracts.py` by importing
+the canonical Discover schemas. Phase 3 also owns normalization, deduplication,
+and three-state constraints. Phase 4 will reuse `RuleBasedIntentPlanner` and
+`PlanValidator`; neither is called by providers.
