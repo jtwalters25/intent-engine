@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from intent_engine.discover.providers.base import HttpTransport, HttpxTransport
+from intent_engine.discover.providers.fixtures import FixtureProvider
 from intent_engine.discover.providers.google_places import GooglePlacesProvider
 from intent_engine.discover.providers.ticketmaster import TicketmasterProvider
 from intent_engine.discover.service import SearchProvider
@@ -23,6 +24,10 @@ from intent_engine.discover.service import SearchProvider
 _DEFAULT_TIMEOUT = 5.0
 _DEFAULT_MAX_RESULTS = 20
 _DEFAULT_RETENTION_DAYS = 30
+
+
+def _is_truthy(value: Optional[str]) -> bool:
+    return (value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 class ConfigError(ValueError):
@@ -37,6 +42,7 @@ class DiscoverConfig:
     max_results: int = _DEFAULT_MAX_RESULTS
     llm_gateway_url: Optional[str] = None
     feedback_retention_days: int = _DEFAULT_RETENTION_DAYS
+    demo_mode: bool = False
 
     @property
     def llm_enabled(self) -> bool:
@@ -84,13 +90,20 @@ class DiscoverConfig:
             max_results=max_results,
             llm_gateway_url=_clean(env.get("DISCOVER_LLM_GATEWAY_URL")),
             feedback_retention_days=retention,
+            demo_mode=_is_truthy(env.get("DISCOVER_DEMO_MODE")),
         )
 
 
 def build_providers(
     config: DiscoverConfig, *, transport: Optional[HttpTransport] = None
 ) -> List[SearchProvider]:
-    """Construct only the providers that have a configured API key."""
+    """Build the provider list.
+
+    In demo mode, return the offline FixtureProvider (no keys/network needed).
+    Otherwise construct only the live providers that have a configured API key.
+    """
+    if config.demo_mode:
+        return [FixtureProvider()]
     transport = transport or HttpxTransport()
     providers: List[SearchProvider] = []
     if config.ticketmaster_api_key:

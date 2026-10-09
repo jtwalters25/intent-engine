@@ -21,9 +21,20 @@ logged. A provider with no key is simply not constructed (graceful degradation).
 | `DISCOVER_MAX_RESULTS` | `20` | Candidate cap per provider; 1–200 (cost control) |
 | `DISCOVER_LLM_GATEWAY_URL` | — | Enables the LLM-only evaluation arm (off by default) |
 | `DISCOVER_FEEDBACK_RETENTION_DAYS` | `30` | Documented feedback retention window |
+| `DISCOVER_DEMO_MODE` | `off` | Serve the offline fixture provider — no keys/network (demos only) |
 
-No key for either provider → `/discover/search` returns **502** (retrieval error),
-never fabricated results.
+No key for either provider → `/discover/search` returns **502** (retrieval
+error), never fabricated results.
+
+### Demo mode (no API keys)
+
+Set `DISCOVER_DEMO_MODE=1` to serve a curated offline fixture pool
+(`providers/fixtures.py`) instead of live providers — the whole pipeline
+(constraints, ranking, explanations) runs with zero keys and no network, so the
+`/discover` page is fully demoable. Fixtures keep the same provenance discipline
+as real data (structured facts VERIFIED, `price_basis` UNKNOWN, descriptions
+EXTRACTED), so demo behavior matches production. **Do not enable in production** —
+it serves fake data and is clearly labeled (`provider: "fixture"`, `demo: true`).
 
 ## Cost controls (§21)
 
@@ -66,7 +77,8 @@ intent_engine). Primary endpoints are trust, not taste:
 
 ## Before a live pilot (out of code scope)
 
-- [ ] Provision `TICKETMASTER_API_KEY` and `GOOGLE_PLACES_API_KEY`.
+- [ ] Provision `TICKETMASTER_API_KEY` and `GOOGLE_PLACES_API_KEY` (not needed
+      for demos — use `DISCOVER_DEMO_MODE=1`).
 - [ ] Review Google Places **display/attribution/storage** terms before any UI or
       evaluation persistence (Places data has restrictions); migrate from the
       legacy Text Search / deprecated Ticketmaster `latlong` as needed.

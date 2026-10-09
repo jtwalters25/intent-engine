@@ -49,10 +49,12 @@ copy to dedupe later.
   (Phase 4), `service.py` + `router.py` (Phase 5), `config.py` (Phase 8), and the
   `evaluation/` subpackage (§16, incl. Phase 7 `baselines.py`).
 - Branch `feat/discover-foundation` is rebased onto current `main` (V4 through
-  Phase 7). Full backend suite green: **1192 tests passing** (203 Discover,
-  including an end-to-end integration test through the real provider adapters,
-  spec §19); the frontend suite is **26 passing**. **All eight Discover phases
-  are complete**
+  Phase 7). Full backend suite green: **1200 tests passing** (211 Discover,
+  including an end-to-end integration test through the real provider adapters and
+  a prompt-injection resistance test, spec §19); the frontend suite is **26
+  passing**. **All eight Discover phases are complete**. A `DISCOVER_DEMO_MODE`
+  fixture provider (`providers/fixtures.py`) serves the whole pipeline offline
+  with no API keys — the `/discover` page is demoable as-is.
   (see the plan below); remaining work is the external/ops prerequisites in
   `discover_pilot_readiness.md` (API keys, provider ToS, feedback persistence,
   real LLM client, deploy).
