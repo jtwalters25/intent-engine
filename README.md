@@ -16,9 +16,22 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 
 > Also reachable at the original URL, [dist-pied-one-60.vercel.app](https://dist-pied-one-60.vercel.app), which still works.
 
-**Python Backend:** Fully implemented with 274 passing tests
+### Discover — real-world activity discovery (live, backend-connected)
 
-> **Note:** The frontend uses mock data and is not connected to the backend API. Every vertical in the `/demo` UI runs the same deterministic ranking *client-side*; none call the Python backend. The backend runs locally via `uvicorn`.
+**Discover** finds real things to do (events + places) and ranks them against your goal — *faithfully*: it never asserts what it can't verify (every attribute is `VERIFIED` / `EXTRACTED` / `UNKNOWN`), excludes items on verified hard constraints (e.g. an 18+ event when kids are in the party), shows unverifiable items as **"needs verification"** instead of fabricating, and grounds every explanation in evidence. Deterministic and reproducible.
+
+- **Live demo API:** [`intent-engine-backend.vercel.app`](https://intent-engine-backend.vercel.app) — realistic fixture data, no API keys:
+  ```bash
+  curl -X POST https://intent-engine-backend.vercel.app/discover/search \
+    -H 'content-type: application/json' \
+    -d '{"query":"something educational for my kids","children_ages":[6]}'
+  ```
+- **Run the full stack locally** (no keys): `cd backend && DISCOVER_DEMO_MODE=1 python3 -m uvicorn intent_engine.api:app --reload`, then `cd frontend && npm run dev` → open `http://localhost:8080/discover`.
+- **Docs:** [why it matters](docs/discover_pitch.md) · [what's built](docs/discover_implementation_status.md) · [run / deploy](docs/discover_pilot_readiness.md) · [go-live with real data](docs/discover_live_data_todo.md).
+
+**Python Backend:** Fully implemented — **1,200+ passing tests** (legacy ranking, V4 agentic planning/execution, and the Discover pilot).
+
+> **Note:** The `/demo` verticals run the deterministic ranking *client-side* (mock data). The newer **Discover** and **V4 Agentic Mode** flows call the real Python backend — Discover's live API is deployed above.
 
 ## What It Does
 
