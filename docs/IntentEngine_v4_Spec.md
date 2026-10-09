@@ -1087,6 +1087,13 @@ GET /v4/plans/{plan_id}
 GET /v4/traces/{trace_id}
 ```
 
+Implementation is intentionally staged. Phase 5A exposes only
+`POST /v4/plan`; Phase 5B owns `POST /v4/execute`. Plan/trace retrieval cannot
+be exposed until persistence, redaction, retention, and access control are
+defined, and `POST /v4/observe` remains part of the Phase 8 outcome lifecycle.
+Keeping absent routes absent is safer than publishing incomplete trust or
+privacy semantics.
+
 ---
 
 # 21. POST /v4/plan
@@ -1102,6 +1109,13 @@ Request:
   }
 }
 ```
+
+The transport does not accept `GoalRequest.timestamp`, `session_id`, a parsed
+interpretation, a plan, constraints, normalized intent, candidates, or trace
+metadata. Time and session evidence are constructed server-side. For the
+initial unauthenticated public streaming pilot, profile and hard policy also
+come from a conservative fixed server-owned kids context; the request's
+`context` is descriptive goal input and cannot weaken that policy.
 
 Response:
 
@@ -1133,6 +1147,13 @@ Response:
   ]
 }
 ```
+
+Phase 5A returns the complete validated `IntentPlan` rather than this
+abbreviated projection. The fields shown above remain present, alongside the
+domain, current and desired state, typed constraints, creation/expiry time,
+planner version, step IDs, transition reasons, and any completion conditions.
+The complete contract avoids losing validation and policy evidence before the
+later execute boundary.
 
 ---
 
@@ -1940,18 +1961,53 @@ API. Those concerns remain assigned to the later phases that own them.
 
 ## Phase 5 — API
 
-Implement:
+Implement in separately reviewed slices:
 
 ```text
-/v4/plan
-/v4/execute
-/v4/observe
-/v4/traces
+Phase 5A  POST /v4/plan
+Phase 5B  POST /v4/execute
+Later     authorized plan/trace retrieval
+Phase 8  POST /v4/observe
 ```
 
-**Done:**
+### Phase 5A — deterministic plan API
+
+`POST /v4/plan` uses a strict `text`/`domain`/`context` transport. A narrow
+streaming rules interpreter handles only the five existing planner objectives
+and the canonical `viewer`, `energy`, and `horizon_minutes` context fields.
+Unsupported or ambiguous requests fail closed; no LLM fallback is enabled.
+
+The application supplies one trusted aware clock value and a server-owned
+planning context. The initial public pilot is deliberately bound to a fixed
+kids profile and authoritative kids maturity gate because the repository does
+not yet have authenticated principals or a profile service. Client context can
+describe intent but cannot select or weaken profile/policy authority.
+
+The exact goal, effective interpretation, plan, profile, constraints, and owner
+scope are stored as detached snapshots in a bounded, expiring, process-local
+registry. This is an execution handoff for the pilot, not durable audit
+storage, and no retrieval endpoint exposes it.
+
+**Phase 5A done:** natural-language streaming goals create complete validated
+plans through the backend API without changing `/rank` or ranking behavior.
+
+### Phase 5B — deterministic execute API
+
+`POST /v4/execute` should accept only `plan_id` and bounded candidate items.
+It must load the exact scoped plan record, re-resolve current trusted profile
+and policy, and compose the existing orchestrator, resolved ranking execution,
+and trace builder in process. Trace identity and replay-version labels are
+server-owned. The public response is a safe execution projection rather than
+the full privacy-sensitive trace.
+
+**Phase 5 done when:**
 
 Streaming scenario works entirely through backend APIs.
+
+Plan retrieval and trace retrieval remain blocked until durable storage,
+redaction, retention, deletion, and access-control policy is explicit.
+`/v4/observe` remains Phase 8 because plan-level versus step-level event
+identity and lifecycle evaluation are still unresolved.
 
 ---
 
