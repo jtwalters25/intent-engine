@@ -22,6 +22,7 @@ Evidence basis per signal:
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Optional, Tuple
@@ -52,8 +53,10 @@ _FAMILY_POSITIVE = frozenset({
 })
 _FAMILY_NEGATIVE = frozenset({
     "nightlife", "nightclub", "club", "bar", "casino", "adult", "mature",
-    "explicit", "18+", "21+", "burlesque",
+    "explicit", "burlesque",
 })
+
+_TOKEN_RE = re.compile(r"[a-z0-9']+")
 _EDUCATIONAL_POSITIVE = frozenset({
     "museum", "science", "history", "historical", "educational", "planetarium",
     "aquarium", "zoo", "library", "art", "cultural", "nature", "botanical",
@@ -111,11 +114,11 @@ def _keyword_signal(
     if text is None:
         return SignalResult(name, NEUTRAL, False, EvidenceStatus.UNKNOWN,
                             "no category or title to assess")
-    lowered = text.lower()
-    tokens = set(lowered.replace("/", " ").replace("-", " ").split())
-    if any(word in tokens or word in lowered for word in negatives):
+    # Whole-token match only: "art" must not match inside "quarterly".
+    tokens = set(_TOKEN_RE.findall(text.lower()))
+    if tokens & negatives:
         return SignalResult(name, 0.15, True, status, f"unsuitable keyword in '{text}'")
-    if any(word in tokens or word in lowered for word in positives):
+    if tokens & positives:
         return SignalResult(name, 0.9, True, status, f"relevant keyword in '{text}'")
     # Had text but nothing to go on — absence of a keyword is not evidence.
     return SignalResult(name, NEUTRAL, False, EvidenceStatus.UNKNOWN,

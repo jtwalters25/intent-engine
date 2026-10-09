@@ -97,6 +97,38 @@ class ConstraintState(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+class ClaimKind(str, Enum):
+    """Kind of an atomic explanation claim (spec section 13.1)."""
+
+    MATCH = "match"
+    TRADEOFF = "tradeoff"
+    CAVEAT = "caveat"
+
+
+class ExplanationClaim(BaseModel):
+    """One atomic, grounded claim within an explanation (spec section 13.1).
+
+    Canonical home shared by the product explainer (`discover.explain`) and the
+    evaluation harness (`discover.evaluation`). A claim whose supporting
+    attribute is not VERIFIED may not be presented as fact; a caveat must rest on
+    something NOT verified (UNKNOWN or EXTRACTED).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(..., min_length=1)
+    kind: ClaimKind
+    attribute: str = Field(..., min_length=1)
+    evidence_status: EvidenceStatus
+    signal: Optional[str] = None
+
+    @model_validator(mode="after")
+    def caveat_requires_uncertainty(self) -> "ExplanationClaim":
+        if self.kind is ClaimKind.CAVEAT and self.evidence_status is EvidenceStatus.VERIFIED:
+            raise ValueError("a caveat cannot rest on a VERIFIED attribute")
+        return self
+
+
 # ---------------------------------------------------------------------------
 # Discovery request (spec section 6)
 # ---------------------------------------------------------------------------

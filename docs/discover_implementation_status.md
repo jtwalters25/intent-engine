@@ -45,10 +45,10 @@ copy to dedupe later.
 - `backend/intent_engine/agentic/` — **V4 intent layer** (see §2).
 - `backend/intent_engine/discover/` — **this pilot.** Present today:
   `schemas.py` (Phase 1), `providers/` (Phase 2), `normalization.py` +
-  `constraints.py` (Phase 3), `signals.py` + `ranking.py` (Phase 4, in
-  progress), and the `evaluation/` subpackage (§16 reference).
+  `constraints.py` (Phase 3), `signals.py` + `ranking.py` + `explain.py`
+  (Phase 4), and the `evaluation/` subpackage (§16 reference).
 - Branch `feat/discover-foundation` is rebased onto current `main` (V4 Phase
-  5/6). Full backend suite green: **1091 tests passing** (`cd backend && python3
+  5/6). Full backend suite green: **1098 tests passing** (`cd backend && python3
   -m pytest tests/ -q`).
 
 ## 2. Current V4 implementation status
@@ -86,10 +86,11 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
 
 ## 4. Integration gaps
 
-1. **Resolved.** `AttributeProvenance`, `EvidenceStatus`, and `ConstraintState`
-   are defined once in `discover/schemas.py`; `constraints.py` and
-   `evaluation/contracts.py` import and re-export them (back-compatible import
-   paths preserved). Verified single-class identity; full suite 928 passed.
+1. **Resolved.** `AttributeProvenance`, `EvidenceStatus`, `ConstraintState`, and
+   (Phase 4) `ClaimKind` + `ExplanationClaim` are defined once in
+   `discover/schemas.py`; `constraints.py` and `evaluation/contracts.py` import
+   and re-export them (back-compatible import paths preserved). Single canonical
+   class each; suite green.
 2. **No Discover→V4 translation boundary** (`service.py` / `ranking_bridge.py`).
    `DiscoveryRequest` is not yet translated into a validated `IntentPlan`.
 3. **Done (Phase 4, `signals.py`).** All six ranking signals (`family_friendly`,
@@ -160,18 +161,19 @@ One phase at a time (spec §20); do not auto-implement later phases.
   price-basis handling, minimum age, availability; `filter_candidates` partitions
   verified / needs-verification / excluded). 26 tests; full suite **928 passed**.
   The six ranking signals moved to Phase 4; gap #1 dedup resolved (see §4).
-- [~] **Phase 4 — Intent Engine integration (in progress).** Slices 1–2 done:
-  `signals.py` (six ranking signals) + `constraints.verified_total_range`; and
-  `ranking.py` — a standalone deterministic Discover ranker (`final = base ×
-  ∏ signal_multipliers` + diversity penalty, stable tie-break, reproducible
-  `ranking_fingerprint`), hard-FAILs excluded, needs-verification flagged. 27
-  tests. **Design decision:** a standalone ranker in `discover/`, not the legacy
-  `DomainRankingEngine` — the `DiscoveryCandidate`/evidence-signal shape does not
-  fit the fixed five-slot `MultiplierSet`, and registering a `Domain.discover`
-  would edit shared `core/`/`schemas.py` (conflict surface + broad blast radius).
-  §12 permits "the existing engine OR its supported extension points." Remaining
-  (slice 3): grounded `ExplanationClaim`s per §13.1 (one claim per signal / PASS
-  /FAIL constraint; a caveat for every eligibility-affecting UNKNOWN).
+- [x] **Phase 4 — Intent Engine integration.** `signals.py` (six ranking
+  signals) + `constraints.verified_total_range`; `ranking.py` — a standalone
+  deterministic Discover ranker (`final = base × ∏ signal_multipliers` +
+  diversity penalty, stable tie-break, reproducible `ranking_fingerprint`),
+  hard-FAILs excluded, needs-verification flagged; `explain.py` — grounded
+  `ExplanationClaim`s (§13.1: one claim per known signal / PASS constraint;
+  mandatory caveat per eligibility-affecting UNKNOWN; EXTRACTED hedged, VERIFIED
+  stated as fact). 42 tests; full suite **1098 passed**. **Design decision:** a
+  standalone ranker in `discover/`, not the legacy `DomainRankingEngine` — the
+  `DiscoveryCandidate`/evidence-signal shape does not fit the fixed five-slot
+  `MultiplierSet`, and registering a `Domain.discover` would edit shared
+  `core/`/`schemas.py` (conflict surface + broad blast radius). §12 permits "the
+  existing engine OR its supported extension points."
 - [ ] **Phase 5 — Discover API.** `/discover` + feedback endpoints; end-to-end
   mocked pipeline test (request→intent→retrieval→normalize→constraints→rank→
   explain→response).

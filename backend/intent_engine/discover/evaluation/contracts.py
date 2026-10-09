@@ -21,27 +21,24 @@ import hashlib
 import json
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from intent_engine.discover.schemas import (
     AttributeProvenance,
+    ClaimKind,
     ConstraintState,
     EvidenceStatus,
+    ExplanationClaim,
 )
 
 
 # ---------------------------------------------------------------------------
 # Enumerations
 # ---------------------------------------------------------------------------
-# EvidenceStatus, ConstraintState, and AttributeProvenance are imported from
-# discover.schemas (their canonical home) and re-exported here so existing
-# ``evaluation.contracts`` / ``evaluation`` import paths keep working.
-
-class ClaimKind(str, Enum):
-    MATCH = "match"
-    TRADEOFF = "tradeoff"
-    CAVEAT = "caveat"
-
+# EvidenceStatus, ConstraintState, ClaimKind, AttributeProvenance, and
+# ExplanationClaim are imported from discover.schemas (their canonical home) and
+# re-exported here so existing ``evaluation.contracts`` / ``evaluation`` import
+# paths keep working.
 
 class PriceBasis(str, Enum):
     PER_PERSON = "per_person"
@@ -72,26 +69,6 @@ class CandidateSnapshot(BaseModel):
 
     candidate_id: str = Field(..., min_length=1)
     attributes: Dict[str, AttributeProvenance] = Field(default_factory=dict)
-
-
-class ExplanationClaim(BaseModel):
-    """One atomic, grounded claim within an explanation (section 13.1)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    text: str = Field(..., min_length=1)
-    kind: ClaimKind
-    attribute: str = Field(..., min_length=1)
-    evidence_status: EvidenceStatus
-    signal: Optional[str] = None
-
-    @model_validator(mode="after")
-    def caveat_requires_uncertainty(self) -> "ExplanationClaim":
-        # A match/tradeoff presented about a VERIFIED attribute is a fact claim;
-        # a caveat must rest on something NOT verified (UNKNOWN or EXTRACTED).
-        if self.kind is ClaimKind.CAVEAT and self.evidence_status is EvidenceStatus.VERIFIED:
-            raise ValueError("a caveat cannot rest on a VERIFIED attribute")
-        return self
 
 
 class AssertedFact(BaseModel):
