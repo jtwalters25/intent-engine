@@ -44,8 +44,9 @@ copy to dedupe later.
   ride_matching, food_delivery, music, ecommerce).
 - `backend/intent_engine/agentic/` — **V4 intent layer** (see §2).
 - `backend/intent_engine/discover/` — **this pilot.** Present today:
-  `schemas.py` (Phase 1) and the `evaluation/` subpackage (§16 reference).
-- Full backend suite is green: **902 tests passing** (`cd backend && python3 -m
+  `schemas.py` (Phase 1), `providers/` (Phase 2), `normalization.py` +
+  `constraints.py` (Phase 3), and the `evaluation/` subpackage (§16 reference).
+- Full backend suite is green: **928 tests passing** (`cd backend && python3 -m
   pytest tests/ -q`).
 
 ## 2. Current V4 implementation status
@@ -87,16 +88,20 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
    home for `AttributeProvenance`/`EvidenceStatus`; `evaluation/contracts.py`
    still carries a byte-compatible copy (it predates schemas). Follow-up: make
    evaluation import from `schemas` and delete the duplicate. Low risk — the
-   definitions are identical; sequenced after Phase 3 so the evaluation suite is
-   touched once.
+   definitions are identical. NOT done in Phase 3 (to avoid touching the
+   evaluation suite mid-stream); `constraints.py` now adds a third identical
+   `ConstraintState`, so fold all of these into the canonical schema in a
+   dedicated cleanup (or at the start of Phase 4).
 2. **No Discover→V4 translation boundary** (`service.py` / `ranking_bridge.py`).
    `DiscoveryRequest` is not yet translated into a validated `IntentPlan`.
-3. **No normalization signals** for Discover (`family_friendly`,
-   `educational_value`, `budget_fit`, `distance_fit`, `schedule_fit`,
-   `duration_fit`) — each needs a documented meaning, range, deterministic
-   calc, missing-value handling, and tests (spec §10).
-4. **No three-state hard constraints** (`constraints.py`) implementing PASS /
-   FAIL / UNKNOWN with the budget-basis distinction (spec §11).
+3. **No ranking signals** for Discover (`family_friendly`, `educational_value`,
+   `budget_fit`, `distance_fit`, `schedule_fit`, `duration_fit`) — each needs a
+   documented meaning, range, deterministic calc, missing-value handling, and
+   tests (spec §10). These are the intent→signal normalization boundary and
+   belong to **Phase 4**, not candidate normalization.
+4. **Done (Phase 3).** Candidate deduplication (`normalization.py`, spec §9) and
+   three-state hard constraints (`constraints.py`: PASS/FAIL/UNKNOWN with the
+   budget-basis distinction, spec §11).
 5. **Providers completed in Phase 2.** Ticketmaster and Google Places normalize
    one response page into candidates with explicit provenance. Live credentials,
    provider terms/display review, and multi-provider retrieval composition remain
@@ -127,8 +132,11 @@ Not yet present in V4: a Discover domain registration. Per spec §10, add a
 - **LLM-only arm** (§16 arm B) needs the `llm_adapter` stub replaced with a real
   call (also an open core task). Evaluation harness can be built and unit-tested
   against recorded arm outputs before then.
-- Nothing blocks the next code phases (schemas → bridge → constraints), which are
-  all pure/offline and reuse merged V4.
+- Nothing blocks the remaining pure/offline work. The next phase (4, Intent
+  Engine integration) is where the V4 dependency begins — and V4 today is
+  **streaming-domain only, in-process, with no HTTP API**. Compose it in-process
+  and add a narrowly scoped Discover domain/translation boundary (spec §10); do
+  not try to reuse the streaming planner objectives for events/places.
 
 ## 7. Concrete implementation plan
 
@@ -146,9 +154,13 @@ One phase at a time (spec §20); do not auto-implement later phases.
   envelopes, bounded results, request parameters, source URLs, and injection
   text. Full suite: **902 passed**, including **50 provider tests**, entirely
   offline. Phase 3 has not started.
-- [ ] **Phase 3 — Normalization + constraints.** Dedup; the six Discover signals
-  with documented range/calc/missing-value rules; three-state hard constraints
-  with budget-basis handling. _Fold in gap #1 (dedupe provenance) here._
+- [x] **Phase 3 — Normalization + constraints.** `normalization.py`
+  (`deduplicate_candidates`: exact-id + conservative cross-provider merge that
+  only *adds* a missing VERIFIED attribute, never overwrites or fabricates) and
+  `constraints.py` (three-state hard constraints — date window, budget with
+  price-basis handling, minimum age, availability; `filter_candidates` partitions
+  verified / needs-verification / excluded). 26 tests; full suite **928 passed**.
+  The six ranking signals moved to Phase 4; gap #1 dedup deferred (see §4).
 - [ ] **Phase 4 — Intent Engine integration.** Translate `DiscoveryRequest` →
   `IntentPlan` via `RuleBasedIntentPlanner` + `PlanValidator`, bridge to the
   deterministic ranker; assert reproducible `ranking_fingerprint`.
@@ -189,8 +201,41 @@ evaluation persistence; the adapters do not store provider content. See
 [Google Text Search documentation](https://developers.google.com/maps/documentation/places/web-service/legacy/search-text)
 and [Places policies](https://developers.google.com/maps/documentation/places/web-service/policies).
 
-Gap #1 remains a **Phase 3 follow-up**: deduplicate
+Gap #1 remains a **follow-up**: deduplicate
 `AttributeProvenance`/`EvidenceStatus` in `evaluation/contracts.py` by importing
-the canonical Discover schemas. Phase 3 also owns normalization, deduplication,
-and three-state constraints. Phase 4 will reuse `RuleBasedIntentPlanner` and
+the canonical Discover schemas. Phase 4 will reuse `RuleBasedIntentPlanner` and
 `PlanValidator`; neither is called by providers.
+
+## Phase 3 completion (2026-10-09)
+
+Files added: `discover/normalization.py`, `discover/constraints.py`,
+`tests/discover/test_normalization.py`, `tests/discover/test_constraints.py`
+(26 tests). No provider, schema, evaluation, V4, API, or frontend code changed.
+
+Scope decision: Phase 3 covers candidate normalization and hard-constraint
+filtering only. The spec §10 ranking signals (`family_friendly`, `budget_fit`,
+…) are the intent→signal boundary and were moved to Phase 4, keeping Phase 3
+free of any V4 dependency.
+
+`constraints.py` enforces the evidence discipline: a hard constraint FAILs only
+on a VERIFIED attribute; EXTRACTED/UNKNOWN routes to UNKNOWN (never a silent pass
+or a confirmed violation). Budget is UNKNOWN unless a VERIFIED price basis (plus
+party size for per-head bases) establishes a real total — a price range that
+straddles the budget is UNKNOWN, not PASS. `filter_candidates` excludes any FAIL
+and surfaces UNKNOWN-on-a-stated-constraint candidates separately as
+"needs verification" (spec §11), never mixed into verified results.
+
+`normalization.py` merges duplicates conservatively: exact `candidate_id`
+repeats collapse; cross-provider matches require a normalized title plus a strong
+discriminator (verified event date or coarse coordinates), so title-only
+collisions are never fused. The surviving primary (most VERIFIED attributes, then
+a deterministic tie-break) only *gains* a VERIFIED attribute another member had
+and it lacked — each kept with its own provenance; nothing is overwritten.
+
+Known limitation: distance is not a hard constraint here — the request contract
+carries no strict distance limit and providers return coordinates, not verified
+travel time. Distance stays a Phase 4 ranking signal (`distance_fit`).
+
+Deferred to Phase 4 / cleanup: gap #1 provenance dedup (now three identical
+`ConstraintState`/provenance definitions across `schemas`, `constraints`, and
+`evaluation`).
