@@ -1087,8 +1087,8 @@ GET /v4/plans/{plan_id}
 GET /v4/traces/{trace_id}
 ```
 
-Implementation is intentionally staged. Phase 5A exposes only
-`POST /v4/plan`; Phase 5B owns `POST /v4/execute`. Plan/trace retrieval cannot
+Implementation is intentionally staged. Phase 5A exposes
+`POST /v4/plan`; Phase 5B adds `POST /v4/execute`. Plan/trace retrieval cannot
 be exposed until persistence, redaction, retention, and access control are
 defined, and `POST /v4/observe` remains part of the Phase 8 outcome lifecycle.
 Keeping absent routes absent is safer than publishing incomplete trust or
@@ -1992,6 +1992,19 @@ storage, and no retrieval endpoint exposes it.
 plans through the backend API without changing `/rank` or ranking behavior.
 
 ### Phase 5B — deterministic execute API
+
+**Implemented:** the successful streaming plan-and-execute scenario works
+through backend APIs. Execute accepts a stored plan ID and up to 100 unique
+candidate items. The service re-resolves server-owned profile/policy/session,
+rejects drift, selects the active step at trusted time, ranks through the shared
+deterministic engine, and constructs a correlated successful trace. HTTP returns
+only trace ID, active step, typed ranked decisions, and grounded explanations.
+Full traces are not exposed or stored. Missing, foreign, evicted, and expired
+records return indistinguishable 404 responses; pre-start execution or policy
+drift returns 409; malformed requests return 422; internal errors return a
+generic 500. Candidate maturity must be explicit, numeric fields finite, and
+streaming calm/complexity values within 0–1. The fixed public pilot profile and
+process-local storage limitations from Phase 5A continue to apply.
 
 `POST /v4/execute` should accept only `plan_id` and bounded candidate items.
 It must load the exact scoped plan record, re-resolve current trusted profile
