@@ -12,3 +12,8 @@ export const execution = {
     score_breakdown: { base_score: .9, final_score: 0, diversity_penalty: 0, blocked: true, block_reason: 'Adult content blocked.', multipliers: { context: 1, profile: 1, urgency: 1, cost: 1, prophecy: 1 } } }],
   explanation: { plan_reason: 'Lower stimulation.', ranking_reason: 'Deterministic ranking.' },
 };
+export const lifecycle = {
+  plan_status: 'ACTIVE', evaluation: 'UNKNOWN', active_step_id: 'step_one',
+  next_transition_minutes: 25, event_count: 0,
+  explanation: 'Playback reports are not causal evidence.',
+};

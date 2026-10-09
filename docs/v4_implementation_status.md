@@ -2,10 +2,39 @@
 
 ## Current status
 
-Phase 7 bounded optional LLM assistance is complete. Rules-first interpretation
-now has an opt-in HTTPS gateway seam for messy streaming goals, with strict
-model-output validation and deterministic temporal planning. Default behavior
-remains rules-only. Phase 8 outcome lifecycle is next; it is not started here.
+Phase 8 outcome lifecycle is complete. A bounded, process-local outcome store
+records playback reports per (owner, plan); `/v4/observe` ingests them and
+`/v4/advance` reports plan status, a server-time next transition, and an
+on/off-track evaluation derived only from server-retained candidate evidence.
+Temporal advancement stays server-authoritative — a client report never skips a
+scheduled step or alters scoring, and reports are explicitly not treated as
+proof that a recommendation caused goal success. Completion and cancellation end
+a plan; event counts are capped. Phase 7 bounded optional LLM assistance remains
+as before (rules-first, opt-in HTTPS gateway, default rules-only).
+
+## Phase 8 implementation record (2026-10-09)
+
+Added `backend/intent_engine/agentic/outcome_evaluator.py` (bounded
+`InMemoryOutcomeStore`, `evaluate`, `advance`, lifecycle enums/response) and
+`backend/tests/agentic/test_outcomes.py`. Modified `agentic/application.py`
+(lifecycle lock, `observe` / `advance_plan`, terminal-state guards on execute),
+`api_v4.py` (`POST /v4/advance`, `POST /v4/observe` → `LifecycleResponse`), the
+frontend Agentic Mode (playback reporting + status refresh), and their tests.
+
+- Outcome state is per (owner_id, plan_id), serialized by an application lock,
+  capped (store capacity 256; ≤100 events/plan), purged with the plan registry,
+  and fail-closed at capacity (never resurrects a terminal plan).
+- `observe` re-resolves policy and ownership, requires the reported step to be
+  the current server-selected active step over a fresh execution, bounds metadata
+  to `candidate_id`, and rejects reports for blocked/unknown candidates.
+- `evaluate` only compares playback to VERIFIED server-retained candidate
+  attributes (wind_down calm vs target energy); everything else is UNKNOWN.
+- Completion (`CONTENT_COMPLETED` on the last step) and cancellation
+  (`PLAN_CANCELLED` / `SESSION_ENDED`) make the plan terminal; execute/observe
+  then return 409.
+- Verification: outcome tests **28 passed**; full backend suite **1016 passed**;
+  frontend suite **21 passed**. No ranking, safety-gate, or existing-API behavior
+  changed.
 
 ## Phase 7 implementation record (2026-10-09)
 
@@ -974,10 +1003,9 @@ remain separate rather than weakening the completed success-trace contract.
 - Normalization for music, e-commerce, ride matching, or food delivery.
 - Failed and partial lifecycle traces for requests that do not reach a completed
   ranking.
-- Plan/trace retrieval (a later privacy/storage slice) and `/v4/observe` (Phase 8).
-- Trace persistence, retrieval storage, redaction, retention, and access-control
-  policy (required before externally exposing traces).
-- Outcome-event ingestion, plan-level versus step-level event identity, outcome
-  evaluation, and the observe/advance/complete loop (Phase 8).
+- Plan/trace retrieval (a later privacy/storage slice).
+- Trace/outcome persistence beyond process memory, retrieval storage, redaction,
+  retention, and access-control policy (required before externally exposing
+  traces or outcomes).
 - Any change to ranking formulas, diversity behavior, hard safety gates,
   candidate selection, existing domain-adapter execution, or existing APIs.

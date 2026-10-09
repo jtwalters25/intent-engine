@@ -30,6 +30,14 @@ const executionSchema = z.object({
 
 export type IntentPlan = z.infer<typeof planSchema>;
 export type PlanExecution = z.infer<typeof executionSchema>;
+const lifecycleSchema = z.object({
+  plan_status: z.enum(['ACTIVE', 'COMPLETE', 'CANCELLED']),
+  evaluation: z.enum(['ON_TRACK', 'OFF_TRACK', 'UNKNOWN', 'COMPLETE']),
+  active_step_id: z.string(), next_transition_minutes: number.nonnegative().nullable(),
+  event_count: number.int().nonnegative(), explanation: z.string(),
+});
+export type PlanLifecycle = z.infer<typeof lifecycleSchema>;
+export type OutcomeType = 'ITEM_SELECTED' | 'CONTENT_STARTED' | 'CONTENT_COMPLETED' | 'CONTENT_STOPPED' | 'USER_OVERRIDE' | 'PLAN_CANCELLED' | 'SESSION_ENDED';
 export const EXAMPLE_GOALS = [
   'The kids are wired and bedtime is in an hour.',
   'Family movie night.', 'Something educational to help us focus.',
@@ -57,7 +65,7 @@ async function post<T>(path: string, body: unknown, schema: z.ZodType<T>, signal
       body: JSON.stringify(body), signal: controller.signal,
     });
     if (!response.ok) {
-      if (response.status === 404 && path === 'execute') throw new Error('This plan is unavailable or expired. Create a new plan.');
+      if (response.status === 404 && path !== 'plan') throw new Error('This plan is unavailable or expired. Create a new plan.');
       if (response.status === 409) throw new Error('This plan cannot run now. Create a new plan.');
       if (response.status === 422) throw new Error('The goal or catalog is unsupported. Try one of the example goals.');
       throw new Error('The intent service is unavailable. Please try again.');
@@ -77,3 +85,8 @@ async function post<T>(path: string, body: unknown, schema: z.ZodType<T>, signal
 
 export const createPlan = (text: string, signal?: AbortSignal) => post('plan', { text, domain: 'streaming', context: {} }, planSchema, signal);
 export const executePlan = (planId: string, catalog: PlatformItem[], signal?: AbortSignal) => post('execute', { plan_id: planId, candidates: catalogCandidates(catalog) }, executionSchema, signal);
+export const advancePlan = (planId: string, signal?: AbortSignal) => post('advance', { plan_id: planId }, lifecycleSchema, signal);
+export const observePlan = (planId: string, stepId: string, eventType: OutcomeType, candidateId?: string, signal?: AbortSignal) => post('observe', {
+  plan_id: planId, step_id: stepId, event_type: eventType,
+  metadata: candidateId ? { candidate_id: candidateId } : {},
+}, lifecycleSchema, signal);

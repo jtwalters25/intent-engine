@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from intent_engine.agentic.application import PlanCreationError, PlanExecutionError, V4PlanningService
 from intent_engine.agentic.llm_planner import configured_llm_components
+from intent_engine.agentic.outcome_evaluator import LifecycleResponse, OutcomeType
 from intent_engine.agentic.schemas import (
     AgenticContract,
     IntentPlan,
@@ -69,6 +70,24 @@ class V4ExecuteRequest(AgenticContract):
         if len(ids) != len(set(ids)):
             raise ValueError("candidate item_id values must be unique")
         return self
+
+
+class V4AdvanceRequest(AgenticContract):
+    plan_id: str = Field(..., min_length=1, max_length=128)
+
+
+class V4ObserveRequest(V4AdvanceRequest):
+    step_id: str = Field(..., min_length=1, max_length=256)
+    event_type: OutcomeType
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("metadata")
+    @classmethod
+    def bounded_metadata(cls, value):
+        validate_json_value(value, path="outcome metadata")
+        if set(value) - {"candidate_id"}:
+            raise ValueError("only candidate_id is supported")
+        return value
 
 
 class V4ExecutionResponse(AgenticContract):
@@ -165,3 +184,26 @@ __all__ = [
     "get_v4_planning_service",
     "router",
 ]
+
+
+@router.post("/advance", response_model=LifecycleResponse)
+def advance_v4_plan(request: V4AdvanceRequest, service: V4PlanningService = Depends(get_v4_planning_service)):
+    """Evaluate lifecycle at server time; never skip steps or expose traces."""
+    try:
+        return service.advance_plan(plan_id=request.plan_id)
+    except PlanExecutionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.public_message}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"code": "lifecycle_failed", "message": "Lifecycle is unavailable."}) from exc
+
+
+@router.post("/observe", response_model=LifecycleResponse)
+def observe_v4_plan(request: V4ObserveRequest, service: V4PlanningService = Depends(get_v4_planning_service)):
+    """Accept a playback report bound to current retained execution evidence."""
+    try:
+        return service.observe(plan_id=request.plan_id, step_id=request.step_id,
+                               event_type=request.event_type, metadata=request.metadata)
+    except PlanExecutionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": exc.public_message}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail={"code": "observation_failed", "message": "The outcome could not be recorded."}) from exc

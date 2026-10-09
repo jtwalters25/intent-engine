@@ -35,6 +35,8 @@ from intent_engine.agentic.schemas import (
 )
 from intent_engine.agentic.validator import CONSTRAINT_TYPE_ALIASES
 from intent_engine.schemas import Domain
+from intent_engine.agentic.outcome_evaluator import InMemoryOutcomeStore, OutcomeType, PlanStatus, advance, evaluate
+from intent_engine.agentic.schemas import ExecutionTrace, OutcomeEvent
 
 
 DEFAULT_PLAN_REGISTRY_CAPACITY = 256
@@ -434,8 +436,14 @@ class V4PlanningService:
             (lambda: datetime.now(timezone.utc)) if clock is None else clock
         )
         self._trace_id_factory = trace_id_factory or (lambda: "trace_" + uuid4().hex)
+        self._lifecycle_lock = RLock()
+        self._outcomes = InMemoryOutcomeStore()
 
     def execute_plan(self, *, plan_id: str, candidates: Sequence[Any]):
+        with self._lifecycle_lock:
+            return self._execute_plan(plan_id=plan_id, candidates=candidates)
+
+    def _execute_plan(self, *, plan_id: str, candidates: Sequence[Any]):
         """Compose server-retained evidence with deterministic execution once.
 
         The full trace remains an in-process return value. HTTP callers receive
@@ -456,6 +464,9 @@ class V4PlanningService:
         if record is None:
             # Expired/evicted, foreign, and nonexistent IDs share this response.
             raise PlanExecutionError("plan_not_found", "The plan is unavailable.", 404)
+        state = self._outcome_state(trusted.owner_id, plan_id, now)
+        if state.status != PlanStatus.ACTIVE:
+            raise PlanExecutionError("plan_terminal", "The plan has ended. Create a new plan.", 409)
         if (record.goal_request.session_id != trusted.session_id
             or dict(record.active_profile_context) != dict(trusted.active_profile_context)
             or tuple(record.authoritative_constraints) != tuple(trusted.authoritative_constraints)):
@@ -474,12 +485,91 @@ class V4PlanningService:
             constraints=prepared.normalized_input.hard_constraints,
             candidates=candidates,
         )
-        return ExecutionTraceBuilder().build(
+        trace = ExecutionTraceBuilder().build(
             trace_id=self._trace_id_factory(), goal_request=record.goal_request,
             interpretation=record.interpretation, plan=record.plan,
             prepared_execution=prepared, ranking_execution=ranking,
             engine_version="v4-domain-engine-1", adapter_version="v4-streaming-adapter-1",
         )
+        trace.outcome_events = [OutcomeEvent.model_validate(event.model_dump()) for event in state.events]
+        state.trace = ExecutionTrace.model_validate(trace.model_dump())
+        return trace
+
+    def _outcome_state(self, owner_id, plan_id, now):
+        self._outcomes.purge(self._registry, now)
+        try:
+            return self._outcomes.get(owner_id, plan_id)
+        except ValueError as exc:
+            raise PlanExecutionError("outcome_capacity", "Outcome capacity is unavailable. Try later.", 409) from exc
+
+    def _lifecycle_context(self, plan_id):
+        from intent_engine.agentic.orchestrator import IntentOrchestrator, OrchestrationError
+        from intent_engine.agentic.validator import PlanValidationError
+        now = self._trusted_now()
+        try:
+            trusted = self._policy_resolver.resolve(Domain.STREAMING)
+        except PolicyResolutionError as exc:
+            raise PlanExecutionError("policy_unavailable", "Execution policy is unavailable.", 409) from exc
+        record = self._registry.get(owner_id=trusted.owner_id, plan_id=plan_id, now=now)
+        if record is None:
+            raise PlanExecutionError("plan_not_found", "The plan is unavailable.", 404)
+        if (record.goal_request.session_id != trusted.session_id
+                or dict(record.active_profile_context) != dict(trusted.active_profile_context)
+                or tuple(record.authoritative_constraints) != tuple(trusted.authoritative_constraints)):
+            raise PlanExecutionError("policy_changed", "Create a new plan under the current policy.", 409)
+        try:
+            prepared = IntentOrchestrator().prepare_execution(record.plan, now=now,
+                active_profile_context=trusted.active_profile_context, authoritative_constraints=trusted.authoritative_constraints)
+        except (OrchestrationError, PlanValidationError) as exc:
+            raise PlanExecutionError("plan_not_executable", "The plan cannot execute at the current time.", 409) from exc
+        return now, trusted, record, prepared
+
+    def advance_plan(self, *, plan_id: str):
+        with self._lifecycle_lock:
+            now, trusted, record, prepared = self._lifecycle_context(plan_id)
+            return advance(record.plan, now, self._outcome_state(trusted.owner_id, plan_id, now), prepared.active_step.step_id)
+
+    def observe(self, *, plan_id: str, step_id: str, event_type: OutcomeType, metadata: Mapping[str, Any]):
+        with self._lifecycle_lock:
+            now, trusted, record, prepared = self._lifecycle_context(plan_id)
+            state = self._outcome_state(trusted.owner_id, plan_id, now)
+            active_id = prepared.active_step.step_id
+            if state.status != PlanStatus.ACTIVE:
+                raise PlanExecutionError("plan_terminal", "The plan has ended.", 409)
+            if step_id != active_id or state.trace is None or state.trace.active_step.step_id != active_id:
+                raise PlanExecutionError("stale_outcome", "Refresh execution before reporting an outcome.", 409)
+            if len(state.events) >= 100:
+                raise PlanExecutionError("outcome_limit", "The plan's outcome limit was reached.", 409)
+            try:
+                selected_type = OutcomeType(event_type)
+                copied = _copy_json_mapping(metadata, path="outcome metadata")
+                if set(copied) - {"candidate_id"}:
+                    raise ValueError("unsupported metadata")
+                candidate_id = copied.get("candidate_id")
+                playback = selected_type in {OutcomeType.ITEM_SELECTED, OutcomeType.CONTENT_STARTED,
+                                            OutcomeType.CONTENT_COMPLETED, OutcomeType.CONTENT_STOPPED}
+                if playback and (not isinstance(candidate_id, str) or not candidate_id.strip() or len(candidate_id) > 256):
+                    raise ValueError("candidate_id is required")
+                if candidate_id is not None:
+                    candidate = next((row for row in state.trace.ranking_trace.ranked_candidates if row.item.item_id == candidate_id), None)
+                    if candidate is None or candidate.status.value == "blocked":
+                        raise ValueError("candidate was not executable")
+                event = OutcomeEvent(event_type=selected_type.value, timestamp=now,
+                                     plan_id=plan_id, step_id=step_id, metadata=copied)
+            except (ValueError, TypeError) as exc:
+                raise PlanExecutionError("invalid_outcome", "The reported outcome is unsupported.", 422) from exc
+            state.events.append(event)
+            state.evaluation = evaluate(event, state.trace)
+            state.evaluated_step_id = active_id
+            if selected_type in {OutcomeType.PLAN_CANCELLED, OutcomeType.SESSION_ENDED}:
+                self.complete(state, cancelled=True)
+            elif selected_type == OutcomeType.CONTENT_COMPLETED and active_id == record.plan.steps[-1].step_id:
+                self.complete(state, cancelled=False)
+            return advance(record.plan, now, state, active_id)
+
+    @staticmethod
+    def complete(state, *, cancelled: bool):
+        state.status = PlanStatus.CANCELLED if cancelled else PlanStatus.COMPLETE
 
     @property
     def registry(self) -> PlanRegistry:
