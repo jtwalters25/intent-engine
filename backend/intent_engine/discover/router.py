@@ -16,9 +16,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 
-from intent_engine.discover.providers.base import HttpxTransport
-from intent_engine.discover.providers.google_places import GooglePlacesProvider
-from intent_engine.discover.providers.ticketmaster import TicketmasterProvider
+from intent_engine.discover.config import DiscoverConfig, build_providers
 from intent_engine.discover.schemas import DiscoveryFeedback, DiscoveryRequest
 from intent_engine.discover.service import (
     DiscoveryResponse,
@@ -33,12 +31,8 @@ router = APIRouter(prefix="/discover", tags=["discover"])
 
 
 def get_providers() -> List[SearchProvider]:
-    """Default production providers (real HTTP transport, env-based keys)."""
-    transport = HttpxTransport()
-    return [
-        TicketmasterProvider(transport=transport),
-        GooglePlacesProvider(transport=transport),
-    ]
+    """Production providers built from env config (only those with a key)."""
+    return build_providers(DiscoverConfig.from_env())
 
 
 @router.post("/search", response_model=DiscoveryResponse)

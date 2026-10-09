@@ -46,10 +46,10 @@ copy to dedupe later.
 - `backend/intent_engine/discover/` — **this pilot.** Present today:
   `schemas.py` (Phase 1), `providers/` (Phase 2), `normalization.py` +
   `constraints.py` (Phase 3), `signals.py` + `ranking.py` + `explain.py`
-  (Phase 4), `service.py` + `router.py` (Phase 5), and the `evaluation/`
-  subpackage (§16 reference).
+  (Phase 4), `service.py` + `router.py` (Phase 5), `config.py` (Phase 8), and the
+  `evaluation/` subpackage (§16, incl. Phase 7 `baselines.py`).
 - Branch `feat/discover-foundation` is rebased onto current `main` (V4 Phase
-  5/6). Full backend suite green: **1117 tests passing** (`cd backend && python3
+  5/6). Full backend suite green: **1129 tests passing** (`cd backend && python3
   -m pytest tests/ -q`).
 
 ## 2. Current V4 implementation status
@@ -197,7 +197,15 @@ One phase at a time (spec §20); do not auto-implement later phases.
   Feeds the existing `compute_arm_report`/`decide`. 7 tests (incl. a reckless-LLM
   case caught by `critical_factual_error_count`, engine scoring 0); full suite
   **1117 passed**.
-- [ ] **Phase 8 — Pilot readiness.** Deployment, privacy, cost, reliability.
+- [x] **Phase 8 — Pilot readiness (code/docs).** `config.py` centralizes
+  env-based keys + cost controls (per-provider timeout, `max_results` cap, LLM
+  off by default) and builds only key-configured providers (graceful
+  degradation). Reliability behaviors (partial failure, all-fail→502, untrusted
+  provider text, determinism) are in place. Ops reference:
+  `docs/discover_pilot_readiness.md`. 12 config tests; full suite **1129 passed**.
+  External prerequisites (API keys, provider ToS review, feedback persistence +
+  retention job, real LLM client, deploy, frontend) are listed in the readiness
+  doc — out of code scope.
 
 ## Phase 2 completion (2026-10-09)
 
