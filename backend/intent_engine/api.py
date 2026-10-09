@@ -13,6 +13,7 @@ from .adapters.food_delivery import FoodDeliveryAdapter
 from .adapters.music import MusicAdapter
 from .adapters.ecommerce import EcommerceAdapter
 from .api_v4 import router as v4_router
+from .discover.router import router as discover_router
 import time
 
 app = FastAPI(
@@ -45,6 +46,10 @@ _domain_engine = DomainRankingEngine({
 # V4 is additive.  Its dependencies and error mapping remain isolated from the
 # legacy `/rank` API so existing request and ranking behavior stays unchanged.
 app.include_router(v4_router)
+
+# Discover pilot is additive: its own router, providers, and error mapping stay
+# isolated from the legacy `/rank` and V4 APIs.
+app.include_router(discover_router)
 
 
 @app.get("/")
