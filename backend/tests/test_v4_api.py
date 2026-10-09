@@ -348,7 +348,6 @@ def test_existing_rank_endpoint_remains_operational(v4_api: V4ApiHarness):
 @pytest.mark.parametrize(
     "method, path, body",
     [
-        ("post", "/v4/execute", {}),
         ("post", "/v4/observe", {}),
         ("get", "/v4/plans/plan_123", None),
         ("get", "/v4/traces/trace_123", None),

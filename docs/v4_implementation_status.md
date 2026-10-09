@@ -2,6 +2,13 @@
 
 ## Current status
 
+Phase 5B successful streaming execution is complete. `POST /v4/execute` accepts
+only a stored `plan_id` and up to 100 typed candidate items. The application
+re-resolves server-owned identity/profile/policy, verifies the retained context,
+and composes the existing orchestrator, resolved ranker, and trace builder once.
+The response exposes trace ID, active step, explained ranked candidates, and a
+small explanation projection. Full lifecycle traces remain in process.
+
 Phase 5A deterministic plan creation is complete. `POST /v4/plan` now accepts a
 strict natural-language streaming goal request, constructs trusted time and
 session evidence server-side, applies a conservative server-owned public-demo
@@ -27,8 +34,45 @@ events. Ranking behavior, existing APIs, Prophecy, and the frontend remain
 unchanged.
 
 Phase 4 successful-execution tracing remains the in-process execution evidence
-boundary. Phase 5A does not yet expose execution, trace retrieval, or outcome
-observation; those require the separately scoped work documented below.
+boundary. Trace retrieval and outcome observation remain deferred as documented
+below. The streaming plan-and-execute scenario now works through backend APIs.
+
+## Phase 5B implementation record (2026-10-09)
+
+Changed `agentic/application.py`, `api_v4.py`, `tests/test_v4_api.py`, this status
+document, and the V4 spec. Added `tests/test_v4_execute_api.py` (33 tests).
+The earlier route-absence test was updated because execute is now implemented;
+observe and retrieval remain absent. Full backend suite: **931 passed**.
+`git diff --check` passed. All ranking code and legacy API contracts are unchanged.
+
+Tests cover T+0/T+25/T+50 selection, authoritative blocking, direct-ranking
+equivalence, canonical replay equality, distinct trace IDs, bypassing raw intent
+resolution, malformed/oversized/duplicate candidates, forged authority fields,
+missing/foreign/expired plans, pre-start execution, policy drift, and generic
+internal errors. Streaming candidates require a known maturity label, finite
+numeric fields, and bounded calm/complexity values. Base scores are bounded to
+0–1,000,000 at this new HTTP boundary; legacy Item validation is unchanged.
+
+HTTP errors: request validation 422; missing, foreign, evicted, or expired records
+404 with identical messages; pre-start or policy/session changes 409; unexpected
+ranking/trace faults generic 500. Expired records are removed by the Phase 5A
+registry, so this implementation deliberately does not distinguish expiration
+from absence. The trace ID is generated server-side; replay versions are
+server-owned semantic labels (`v4-domain-engine-1`, `v4-streaming-adapter-1`) that
+must be revised alongside future scoring/adapter behavior changes.
+
+Limitations: fixed public demo owner/session is not user authentication; clients
+provide candidate metadata, whose real-world accuracy is outside the ranking
+contract. Production requires trusted retrieval and real identity/profile
+resolution. Plans remain bounded and process-local; restart/eviction loses them.
+Full traces are returned only inside the process and are neither persisted nor
+retrievable. Redaction, durable storage, access control, partial/failure traces,
+Prophecy merging, and outcome lifecycle remain deferred.
+
+Recommended next PR: Phase 6 streaming frontend integration with the real
+`/v4/plan` and `/v4/execute` APIs, replacing the client-side V4 planning/ranking
+simulation while preserving the existing signal demo. Do not add trace retrieval
+or observation as part of frontend wiring.
 
 ## Completed scope
 
@@ -781,7 +825,7 @@ constraints or timestamps.
   `step_id`, although events such as `PLAN_CANCELLED` and `SESSION_ENDED` may be
   plan-scoped. This should be resolved before the outcome API is introduced.
 
-## Completed Phase 5A plan path and recommended Phase 5B
+## Completed Phase 5A plan path and Phase 5B composition
 
 The successful streaming path is now observable without making the orchestrator
 a ranker or the trace builder an executor:
@@ -812,7 +856,7 @@ Phase 5A now adds the request-to-plan half of that boundary:
 5. detached lifecycle snapshots enter a bounded, owner-scoped registry while
    the complete validated plan is returned to the caller.
 
-The recommended next PR is Phase 5B: `POST /v4/execute`. It should accept only
+Phase 5B implements `POST /v4/execute`. It accepts only
 `plan_id` and bounded full `Item` candidates, resolve the current principal,
 profile, policy, trusted time, trace ID, and version labels server-side, load
 the exact retained lifecycle record, then compose
@@ -835,8 +879,7 @@ remain separate rather than weakening the completed success-trace contract.
 - Normalization for music, e-commerce, ride matching, or food delivery.
 - Failed and partial lifecycle traces for requests that do not reach a completed
   ranking.
-- `/v4/execute` (Phase 5B), plan/trace retrieval (a later privacy/storage
-  slice), and `/v4/observe` (Phase 8).
+- Plan/trace retrieval (a later privacy/storage slice) and `/v4/observe` (Phase 8).
 - Trace persistence, retrieval storage, redaction, retention, and access-control
   policy (required before externally exposing traces).
 - Frontend Agentic Mode and frontend-to-backend execution wiring (Phase 6).

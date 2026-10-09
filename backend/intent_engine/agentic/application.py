@@ -16,6 +16,7 @@ from hashlib import sha256
 from threading import RLock
 from types import MappingProxyType
 from typing import Any, Dict, Optional, Protocol, Sequence, Tuple, runtime_checkable
+from uuid import uuid4
 
 from intent_engine.agentic.context_interpreter import (
     ContextInterpreter,
@@ -38,6 +39,16 @@ from intent_engine.schemas import Domain
 
 DEFAULT_PLAN_REGISTRY_CAPACITY = 256
 DEFAULT_PLAN_REGISTRY_RETENTION = timedelta(hours=4)
+
+
+class PlanExecutionError(ValueError):
+    """Public-safe execution rejection with an HTTP status."""
+
+    def __init__(self, code: str, message: str, status_code: int) -> None:
+        self.code = code
+        self.public_message = message
+        self.status_code = status_code
+        super().__init__(message)
 
 
 class PlanCreationError(ValueError):
@@ -407,6 +418,7 @@ class V4PlanningService:
         policy_resolver: Optional[PlanningContextResolver] = None,
         registry: Optional[PlanRegistry] = None,
         clock: Optional[Callable[[], datetime]] = None,
+        trace_id_factory: Optional[Callable[[], str]] = None,
     ) -> None:
         self._interpreter = (
             RuleBasedContextInterpreter() if interpreter is None else interpreter
@@ -420,6 +432,53 @@ class V4PlanningService:
         self._registry = InMemoryPlanRegistry() if registry is None else registry
         self._clock = (
             (lambda: datetime.now(timezone.utc)) if clock is None else clock
+        )
+        self._trace_id_factory = trace_id_factory or (lambda: "trace_" + uuid4().hex)
+
+    def execute_plan(self, *, plan_id: str, candidates: Sequence[Any]):
+        """Compose server-retained evidence with deterministic execution once.
+
+        The full trace remains an in-process return value. HTTP callers receive
+        only the dedicated response projection defined by the V4 router.
+        """
+        from intent_engine.agentic.orchestrator import IntentOrchestrator, OrchestrationError
+        from intent_engine.agentic.validator import PlanValidationError
+        from intent_engine.agentic.trace import ExecutionTraceBuilder
+        from intent_engine.core.domain_engine import DomainRankingEngine
+        from intent_engine.adapters.streaming import StreamingAdapter
+
+        now = self._trusted_now()
+        try:
+            trusted = self._policy_resolver.resolve(Domain.STREAMING)
+        except PolicyResolutionError as exc:
+            raise PlanExecutionError("policy_unavailable", "Execution policy is unavailable.", 409) from exc
+        record = self._registry.get(owner_id=trusted.owner_id, plan_id=plan_id, now=now)
+        if record is None:
+            # Expired/evicted, foreign, and nonexistent IDs share this response.
+            raise PlanExecutionError("plan_not_found", "The plan is unavailable.", 404)
+        if (record.goal_request.session_id != trusted.session_id
+            or dict(record.active_profile_context) != dict(trusted.active_profile_context)
+            or tuple(record.authoritative_constraints) != tuple(trusted.authoritative_constraints)):
+            raise PlanExecutionError("policy_changed", "Create a new plan under the current policy.", 409)
+        try:
+            prepared = IntentOrchestrator().prepare_execution(
+                record.plan, now=now,
+                active_profile_context=trusted.active_profile_context,
+                authoritative_constraints=trusted.authoritative_constraints,
+            )
+        except (OrchestrationError, PlanValidationError) as exc:
+            raise PlanExecutionError("plan_not_executable", "The plan cannot execute at the current time.", 409) from exc
+        ranking = DomainRankingEngine({Domain.STREAMING: StreamingAdapter()}).rank_resolved_execution(
+            domain=record.plan.domain,
+            resolved_intent=prepared.normalized_input.resolved_intent,
+            constraints=prepared.normalized_input.hard_constraints,
+            candidates=candidates,
+        )
+        return ExecutionTraceBuilder().build(
+            trace_id=self._trace_id_factory(), goal_request=record.goal_request,
+            interpretation=record.interpretation, plan=record.plan,
+            prepared_execution=prepared, ranking_execution=ranking,
+            engine_version="v4-domain-engine-1", adapter_version="v4-streaming-adapter-1",
         )
 
     @property
