@@ -48,9 +48,12 @@ copy to dedupe later.
   `constraints.py` (Phase 3), `signals.py` + `ranking.py` + `explain.py`
   (Phase 4), `service.py` + `router.py` (Phase 5), `config.py` (Phase 8), and the
   `evaluation/` subpackage (§16, incl. Phase 7 `baselines.py`).
-- Branch `feat/discover-foundation` is rebased onto current `main` (V4 Phase
-  5/6). Full backend suite green: **1129 tests passing** (`cd backend && python3
-  -m pytest tests/ -q`).
+- Branch `feat/discover-foundation` is rebased onto current `main` (V4 through
+  Phase 7). Full backend suite green: **1187 tests passing** (198 Discover); the
+  frontend suite is **26 passing**. **All eight Discover phases are complete**
+  (see the plan below); remaining work is the external/ops prerequisites in
+  `discover_pilot_readiness.md` (API keys, provider ToS, feedback persistence,
+  real LLM client, deploy).
 
 ## 2. Current V4 implementation status
 
