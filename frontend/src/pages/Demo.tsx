@@ -14,8 +14,10 @@ import PlatformTabs from '@/components/demo/PlatformTabs';
 import SignalSliders from '@/components/demo/SignalSliders';
 import ScoringFormula from '@/components/demo/ScoringFormula';
 import ProphecyAgent from '@/components/demo/ProphecyAgent';
+import AgenticMode from '@/components/demo/AgenticMode';
 
 export default function Demo() {
+  const [mode, setMode] = useState<'signals' | 'agentic'>('signals');
   const [activePlatform, setActivePlatform] = useState<PlatformKey>('streaming');
   const [activeContextMap, setActiveContextMap] = useState<Record<PlatformKey, string>>({
     streaming: 'bedtime',
@@ -100,6 +102,12 @@ export default function Demo() {
           </p>
         </header>
 
+        <div className="mb-6 flex gap-2" aria-label="Demo mode">
+          <button type="button" aria-pressed={mode === 'signals'} onClick={() => setMode('signals')} className="rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">Signal Mode</button>
+          <button type="button" aria-pressed={mode === 'agentic'} onClick={() => setMode('agentic')} className="rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">Agentic Mode</button>
+        </div>
+
+        {mode === 'agentic' ? <AgenticMode /> : <>
         {/* Platform Tabs */}
         <section className="mb-6">
           <PlatformTabs active={activePlatform} onSelect={handlePlatformSwitch} />
@@ -189,6 +197,7 @@ export default function Demo() {
           </div>
         </div>
 
+        </>}
         {/* Footer */}
         <footer className="mt-10 pt-4 border-t border-white/5">
           <p className="font-dm-mono text-xs text-white/20 text-center">

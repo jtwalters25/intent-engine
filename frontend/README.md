@@ -4,6 +4,25 @@ A conceptual prototype demonstrating intent-aware content discovery for children
 
 > **Note:** This is a design prototype intended to demonstrate systems thinking and backend architecture. It is not a production service.
 
+### V4 Agentic Mode
+
+`/demo` has two modes. Signal Mode retains its local interactive sliders.
+Agentic Mode is the streaming pilot connected to the Python backend:
+`POST /v4/plan` creates a validated plan, then `POST /v4/execute` supplies the
+current step, deterministic ranking, safety evidence, and explanations.
+The public pilot uses a fixed kids safety profile. Future steps are displayed
+as a timeline; “Refresh ranking” asks the server to select the step active at
+its current time. Backend errors are shown explicitly without mock results.
+
+For local development, start `python3 -m uvicorn intent_engine.api:app --port
+8000` from `backend/`, then `npm run dev` from `frontend/`. Vite proxies `/v4`
+to `http://127.0.0.1:8000`; set `V4_BACKEND_URL` on the Vite process to change it.
+For production, configure `VITE_API_BASE_URL` at build time to the reachable
+backend origin, or route `/v4` to that backend on the frontend's origin. The
+backend is not deployed by the static frontend build. Use HTTPS in production;
+never place API keys in a `VITE_` variable. Plans are process-local and may
+expire or disappear after restart/eviction; create a new plan when prompted.
+
 ---
 
 ## Table of Contents

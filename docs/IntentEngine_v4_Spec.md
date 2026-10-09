@@ -2026,6 +2026,15 @@ identity and lifecycle evaluation are still unresolved.
 
 ## Phase 6 — Frontend Integration
 
+**Implemented for the streaming pilot:** `/demo` Agentic Mode calls `/v4/plan`
+and `/v4/execute`, validates their responses, and displays the actual plan,
+server-selected active step, ranked items, hard-gate evidence, and deterministic
+explanations. Refresh re-executes using server time; timeline steps do not set a
+client execution clock. Loading, failure, expiry, and retry states are explicit.
+No client-side planner or ranker runs in Agentic Mode. Signal Mode preserves its
+existing interactive simulation. A configured reachable Python backend is
+required; the static frontend deployment does not deploy the API.
+
 This should also eliminate an existing architectural limitation:
 
 the current demo ranks client-side instead of using the Python backend.
