@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from intent_engine.agentic.application import PlanCreationError, PlanExecutionError, V4PlanningService
+from intent_engine.agentic.llm_planner import configured_llm_components
 from intent_engine.agentic.schemas import (
     AgenticContract,
     IntentPlan,
@@ -94,7 +95,8 @@ class V4PlanRequest(AgenticContract):
         return value
 
 
-_default_v4_service = V4PlanningService()
+_v4_interpreter, _v4_planner = configured_llm_components()
+_default_v4_service = V4PlanningService(interpreter=_v4_interpreter, planner=_v4_planner)
 
 
 def get_v4_planning_service() -> V4PlanningService:
@@ -107,7 +109,7 @@ def get_v4_planning_service() -> V4PlanningService:
     response_model=IntentPlan,
     summary="Create a deterministic V4 streaming intent plan",
 )
-async def create_v4_plan(
+def create_v4_plan(
     request: V4PlanRequest,
     service: V4PlanningService = Depends(get_v4_planning_service),
 ) -> IntentPlan:

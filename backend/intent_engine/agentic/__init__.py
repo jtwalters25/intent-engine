@@ -11,6 +11,12 @@ from intent_engine.agentic.context_interpreter import (
     InterpretationError,
     RuleBasedContextInterpreter,
 )
+from intent_engine.agentic.llm_planner import (
+    HTTPInterpretationProvider,
+    InterpretationProvider,
+    LLMIntentPlanner,
+    RulesFirstLLMInterpreter,
+)
 from intent_engine.agentic.schemas import (
     MAX_PLAN_STEPS,
     CandidateSafetyDecision,
@@ -70,6 +76,10 @@ from intent_engine.agentic.trace import (
 )
 
 __all__ = [
+    "HTTPInterpretationProvider",
+    "InterpretationProvider",
+    "LLMIntentPlanner",
+    "RulesFirstLLMInterpreter",
     "ActivePlanStep",
     "CandidateSafetyDecision",
     "MAX_PLAN_STEPS",

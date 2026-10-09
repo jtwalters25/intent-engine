@@ -2049,6 +2049,17 @@ Frontend no longer simulates the V4 execution path.
 
 ## Phase 7 — Optional LLM Planner
 
+**Implemented (bounded streaming slice):** optional server-configured model
+interpretation is attempted only when deterministic rules cannot resolve one
+objective. `LLMIntentPlanner` delegates supported objectives to deterministic
+temporal templates rather than accepting arbitrary model-authored plans.
+Strict schema/semantic checks precede trusted profile application; model output
+cannot claim hard policy authority. Invalid or unavailable model output creates
+a validated neutral `safe_fallback` plan using explicit context and domain
+defaults. Default operation remains rules-only. See
+`docs/v4_llm_configuration.md` for the HTTPS gateway contract, enablement,
+privacy/deployment prerequisites and deliberately deferred vendor integration.
+
 Only now introduce the LLM.
 
 Pipeline:

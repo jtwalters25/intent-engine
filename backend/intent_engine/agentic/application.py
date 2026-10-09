@@ -23,7 +23,7 @@ from intent_engine.agentic.context_interpreter import (
     InterpretationError,
     RuleBasedContextInterpreter,
 )
-from intent_engine.agentic.planner import PlanningError, RuleBasedIntentPlanner
+from intent_engine.agentic.planner import IntentPlanner, PlanningError, RuleBasedIntentPlanner
 from intent_engine.agentic.schemas import (
     ConstraintSource,
     ContextInterpretation,
@@ -414,7 +414,7 @@ class V4PlanningService:
         self,
         *,
         interpreter: Optional[ContextInterpreter] = None,
-        planner: Optional[RuleBasedIntentPlanner] = None,
+        planner: Optional[IntentPlanner] = None,
         policy_resolver: Optional[PlanningContextResolver] = None,
         registry: Optional[PlanRegistry] = None,
         clock: Optional[Callable[[], datetime]] = None,
