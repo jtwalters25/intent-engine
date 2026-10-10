@@ -64,6 +64,31 @@ _EDUCATIONAL_POSITIVE = frozenset({
 })
 _EDUCATIONAL_NEGATIVE: frozenset = frozenset()
 
+# Query cues that activate the family / educational preference signals. Like the
+# other signals (distance needs a location, budget needs a budget), these only
+# apply when the request actually expresses the intent — otherwise they stay
+# neutral so, e.g., a "live music" search is not boosted toward the museum.
+_FAMILY_CUES = frozenset({
+    "family", "families", "kid", "kids", "child", "children", "childrens",
+    "toddler", "toddlers", "baby", "babies",
+})
+_EDUCATIONAL_CUES = frozenset({
+    "educational", "education", "learn", "learning", "stem", "science",
+    "history", "historical", "museum", "cultural", "culture",
+})
+
+
+def _query_tokens(request: DiscoveryRequest) -> set:
+    return set(_TOKEN_RE.findall(request.query.lower()))
+
+
+def _has_family_intent(request: DiscoveryRequest) -> bool:
+    return bool(request.children_ages) or bool(_query_tokens(request) & _FAMILY_CUES)
+
+
+def _has_educational_intent(request: DiscoveryRequest) -> bool:
+    return bool(request.children_ages) or bool(_query_tokens(request) & _EDUCATIONAL_CUES)
+
 
 @dataclass(frozen=True)
 class SignalResult:
@@ -126,12 +151,26 @@ def _keyword_signal(
 
 
 def family_friendly(candidate: DiscoveryCandidate, request: DiscoveryRequest) -> SignalResult:
-    """Suitability for a family/children, from category (else title keywords)."""
+    """Suitability for a family/children, from category (else title keywords).
+
+    Only active when the request expresses family intent (children in the party
+    or a family/kids cue in the query); otherwise neutral.
+    """
+    if not _has_family_intent(request):
+        return SignalResult("family_friendly", NEUTRAL, False, EvidenceStatus.UNKNOWN,
+                            "no family intent in the request")
     return _keyword_signal("family_friendly", candidate, _FAMILY_POSITIVE, _FAMILY_NEGATIVE)
 
 
 def educational_value(candidate: DiscoveryCandidate, request: DiscoveryRequest) -> SignalResult:
-    """Educational character, from category (else title keywords)."""
+    """Educational character, from category (else title keywords).
+
+    Only active when the request expresses educational/family intent; otherwise
+    neutral.
+    """
+    if not _has_educational_intent(request):
+        return SignalResult("educational_value", NEUTRAL, False, EvidenceStatus.UNKNOWN,
+                            "no educational intent in the request")
     return _keyword_signal("educational_value", candidate, _EDUCATIONAL_POSITIVE, _EDUCATIONAL_NEGATIVE)
 
 

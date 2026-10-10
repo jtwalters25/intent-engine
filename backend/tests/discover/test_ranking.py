@@ -38,7 +38,7 @@ def _candidate(cid, title="Activity", provider="p", category=None, provenance=No
 
 
 def test_family_friendly_outranks_unfriendly():
-    req = DiscoveryRequest(query="something to do")
+    req = DiscoveryRequest(query="fun for the kids")
     museum = _candidate("c-museum", category="Museum")
     club = _candidate("c-club", category="Nightclub")
     result = rank_candidates([club, museum], req)

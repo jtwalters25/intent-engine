@@ -41,7 +41,8 @@ def test_fixture_candidates_keep_provenance_discipline():
 
 
 def test_demo_pipeline_excludes_age_gated_event_for_children():
-    resp = _run(DiscoveryRequest(query="family museum", children_ages=[6]))
+    # "comedy" retrieves the 18+ show; a 6-year-old in the party excludes it.
+    resp = _run(DiscoveryRequest(query="comedy", children_ages=[6]))
     ids = [r.candidate_id for r in resp.results]
     assert "ticketmaster:TM-COM" not in ids           # 18+ fails the min-age gate
     assert resp.excluded_count >= 1
@@ -68,7 +69,7 @@ def test_demo_budget_fail_excludes_overpriced_per_person_event():
 
 def test_demo_budget_pass_for_cheap_per_ticket_event():
     # Children's theatre is a verified $18 per ticket -> fits a $100 / party-of-2 budget.
-    resp = _run(DiscoveryRequest(query="childrens theatre", budget_total=Decimal("100"), party_size=2))
+    resp = _run(DiscoveryRequest(query="kids theatre", budget_total=Decimal("100"), party_size=2))
     theater = next((r for r in resp.results if r.candidate_id == "ticketmaster:TM-THEATER"), None)
     assert theater is not None
     assert theater.constraints["budget"] == "PASS"
