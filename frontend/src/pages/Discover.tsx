@@ -9,7 +9,10 @@ import {
 const EXAMPLE_QUERIES = [
   'Something educational and fun for my kids this Saturday',
   'Live music downtown this weekend',
-  'A rainy-day activity for a family of four',
+  'Date night ideas in the city',
+  'A sports game this weekend',
+  'Free outdoor activities for the family',
+  'Hands-on cooking or craft class',
 ];
 
 export default function Discover() {
