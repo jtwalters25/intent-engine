@@ -7,7 +7,12 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    proxy: { '/v4': { target: process.env.V4_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true } },
+    proxy: {
+      '/v4': { target: process.env.V4_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+      // Scope to the API sub-paths only — do NOT proxy the `/discover` SPA page route.
+      '/discover/search': { target: process.env.V4_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+      '/discover/feedback': { target: process.env.V4_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+    },
     hmr: {
       overlay: false,
     },

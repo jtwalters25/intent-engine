@@ -22,6 +22,12 @@ dev = [
     "httpx>=0.24.0",
 ]
 
+# Only the library package is distributable. `api/` is the Vercel serverless
+# entry (served directly), not part of the package — pin discovery so setuptools
+# does not choke on multiple top-level packages during the Vercel build.
+[tool.setuptools]
+packages = ["intent_engine"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
