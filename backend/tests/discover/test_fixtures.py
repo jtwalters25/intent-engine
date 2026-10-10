@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from intent_engine.discover.config import DiscoverConfig, build_providers
 from intent_engine.discover.providers.fixtures import FixtureProvider, demo_candidates
@@ -57,3 +58,18 @@ def test_demo_pipeline_is_ranked_explained_and_deterministic():
     assert a.ranking_fingerprint == b.ranking_fingerprint
     assert [r.rank for r in a.results] == list(range(1, len(a.results) + 1))
     assert all(r.explanation.text for r in a.results)
+
+
+def test_demo_budget_fail_excludes_overpriced_per_person_event():
+    # VIP is a verified $150 per person; a $100 budget for 2 is verifiably over.
+    resp = _run(DiscoveryRequest(query="tasting dinner", budget_total=Decimal("100"), party_size=2))
+    assert "ticketmaster:TM-VIP" not in [r.candidate_id for r in resp.results]
+
+
+def test_demo_budget_pass_for_cheap_per_ticket_event():
+    # Children's theatre is a verified $18 per ticket -> fits a $100 / party-of-2 budget.
+    resp = _run(DiscoveryRequest(query="childrens theatre", budget_total=Decimal("100"), party_size=2))
+    theater = next((r for r in resp.results if r.candidate_id == "ticketmaster:TM-THEATER"), None)
+    assert theater is not None
+    assert theater.constraints["budget"] == "PASS"
+    assert theater.needs_verification is False
