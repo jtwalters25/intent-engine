@@ -46,38 +46,51 @@ REQ = DiscoveryRequest(query="x")
 
 
 # ---------------------------------------------------------------------------
-# family_friendly / educational_value (keyword signals)
+# family_friendly / educational_value (intent-gated keyword signals)
 # ---------------------------------------------------------------------------
+
+# A request that expresses family + educational intent (children in the party).
+FAM = DiscoveryRequest(query="x", children_ages=[6])
+
 
 def test_family_friendly_from_verified_category():
     cand = _candidate(category="Museum", provenance={"category": _prov("Museum")})
-    s = _sig(cand, REQ, "family_friendly")
+    s = _sig(cand, FAM, "family_friendly")
     assert s.value > 0.5 and s.known and s.evidence_status is EvidenceStatus.VERIFIED
 
 
 def test_family_unfriendly_category_scores_low():
     cand = _candidate(category="Nightclub", provenance={"category": _prov("Nightclub")})
-    s = _sig(cand, REQ, "family_friendly")
+    s = _sig(cand, FAM, "family_friendly")
     assert s.value < 0.5 and s.known
 
 
 def test_family_friendly_falls_back_to_title_as_extracted():
     cand = _candidate(title="Kids Science Fair")  # no category evidence
-    s = _sig(cand, REQ, "family_friendly")
+    s = _sig(cand, FAM, "family_friendly")
     assert s.value > 0.5 and s.known
     assert s.evidence_status is EvidenceStatus.EXTRACTED
 
 
 def test_family_friendly_unknown_when_no_keyword():
     cand = _candidate(title="Quarterly Shareholder Meeting")
-    s = _sig(cand, REQ, "family_friendly")
+    s = _sig(cand, FAM, "family_friendly")
     assert s.value == NEUTRAL and not s.known
     assert s.evidence_status is EvidenceStatus.UNKNOWN
 
 
+def test_family_and_educational_are_neutral_without_intent():
+    # No children, no family/educational cue -> both signals stay neutral.
+    cand = _candidate(category="Museum", provenance={"category": _prov("Museum")})
+    fam = _sig(cand, DiscoveryRequest(query="live music downtown"), "family_friendly")
+    edu = _sig(cand, DiscoveryRequest(query="live music downtown"), "educational_value")
+    assert fam.value == NEUTRAL and not fam.known
+    assert edu.value == NEUTRAL and not edu.known
+
+
 def test_educational_value_from_category():
     cand = _candidate(category="Science", provenance={"category": _prov("Science")})
-    s = _sig(cand, REQ, "educational_value")
+    s = _sig(cand, FAM, "educational_value")
     assert s.value > 0.5 and s.known
 
 

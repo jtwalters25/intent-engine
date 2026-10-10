@@ -49,7 +49,7 @@ def _ranked(candidate, request):
 
 def test_verified_signal_is_stated_as_fact():
     cand = _candidate(category="Museum")
-    ex = explain(_ranked(cand, DiscoveryRequest(query="x")))
+    ex = explain(_ranked(cand, DiscoveryRequest(query="fun for kids")))
     fam = next(c for c in ex.claims if c.signal == "family_friendly")
     assert fam.kind is ClaimKind.MATCH
     assert fam.evidence_status is EvidenceStatus.VERIFIED
@@ -60,7 +60,7 @@ def test_verified_signal_is_stated_as_fact():
 def test_extracted_signal_is_hedged():
     # No category -> family/educational derived from the title -> EXTRACTED.
     cand = _candidate(title="Kids Science Fair")
-    ex = explain(_ranked(cand, DiscoveryRequest(query="x")))
+    ex = explain(_ranked(cand, DiscoveryRequest(query="fun for kids")))
     fam = next(c for c in ex.claims if c.signal == "family_friendly")
     assert fam.kind is ClaimKind.MATCH
     assert fam.evidence_status is EvidenceStatus.EXTRACTED
