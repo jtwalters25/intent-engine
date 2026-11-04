@@ -10,8 +10,6 @@ Pick a context, drag the signal sliders, and watch the same catalog re-rank live
 
 First commit: February 2026.
 
-A deterministic, intent-aware re-ranking engine with a React prototype UI. It shows how contextual intent signals (time of day, viewer profile, energy level, device) can reshape content recommendations without ML, personalization, or randomness.
-
 > **Prototype.** Built to demonstrate systems thinking and backend architecture, not a production service.
 
 ## Why I Built This
@@ -41,9 +39,11 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 - Structured explanations for every ranking decision
 - Optional LLM fallback (off by default, env-var gated)
 
+**Python Backend:** Fully implemented — **1,200+ passing tests** (legacy ranking, V4 agentic planning/execution, and the Discover pilot).
+
 ## Other Experiments
 
-### Discover — real-world activity discovery (live, backend-connected)
+### Real-world activity finder (live, backend-connected)
 
 **Discover** finds real things to do (events + places) and ranks them against your goal — *faithfully*: it never asserts what it can't verify (every attribute is `VERIFIED` / `EXTRACTED` / `UNKNOWN`), excludes items on verified hard constraints (e.g. an 18+ event when kids are in the party), shows unverifiable items as **"needs verification"** instead of fabricating, and grounds every explanation in evidence. Deterministic and reproducible.
 
@@ -55,8 +55,6 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
   ```
 - **Run the full stack locally** (no keys): `cd backend && DISCOVER_DEMO_MODE=1 python3 -m uvicorn intent_engine.api:app --reload`, then `cd frontend && npm run dev` → open `http://localhost:8080/discover`.
 - **Docs:** [why it matters](docs/discover_pitch.md) · [what's built](docs/discover_implementation_status.md) · [run / deploy](docs/discover_pilot_readiness.md) · [go-live with real data](docs/discover_live_data_todo.md).
-
-**Python Backend:** Fully implemented — **1,200+ passing tests** (legacy ranking, V4 agentic planning/execution, and the Discover pilot).
 
 > **Note:** The `/demo` verticals run the deterministic ranking *client-side* (mock data). The newer **Discover** and **V4 Agentic Mode** flows call the real Python backend — Discover's live API is deployed above.
 
@@ -291,8 +289,6 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 
 **Solution:** Set intent once, and it auto-switches on schedule.
 
-**Impact:** Reducing friction on parent profiles by even 2% churn translates to ~$180M annual revenue opportunity for a platform at Netflix scale.
-
 ## Design Principles
 
 1. **Determinism:** same input, same output, every time
@@ -340,12 +336,7 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 ![E-Commerce Platform](docs/screenshots/10-platform-ecommerce.png)
 **E-Commerce (Baby Shower Gifts).** Intent-aware ranking also applies outside media. With viewer set to "kids" for a gift-buying context, Organic Baby Blanket and Kids Art Kit jump to the top. Noise-Canceling Headphones and Smart Watch Pro are BLOCKED as adult-maturity items gated by the viewer signal. Board Game Collection (family-friendly) gets a +4 boost. The same formula drives it: `viewer(1.20)` for kids items vs. `viewer(0.00)` for adult items.
 
-> Screenshots above cover Streaming, Music, and E-Commerce. The Ride Matching and Food Delivery verticals were added later (see Recent Changes) and are best seen live in the demo.
-
-## Recent Changes
-
-- **2026-07-22:** Added backend `DomainAdapter` implementations for **Music** (`adapters/music.py`) and **E-Commerce** (`adapters/ecommerce.py`), so all five demo verticals now have a matching backend adapter registered on the `/rank` domain engine. Test count grew to 274.
-- **2026-03-01:** Expanded the `/demo` from 3 verticals to 5. Added **Ride Matching** and **Food Delivery** tabs (8 items, 4 context presets, 5 domain-specific signal sliders each) and tagged **Streaming** with a `PILOT` badge. The backend gained a v3 domain engine (`core/`) with adapters for streaming, ride_matching, and food_delivery; the test count grew to 237.
+> Screenshots above cover Streaming, Music, and E-Commerce. The Ride Matching and Food Delivery verticals were added later and are best seen live in the demo.
 
 ## Related Work
 
