@@ -22,13 +22,24 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Add CORS middleware
+# CORS: restrict to the known frontend origins rather than a wildcard. The API
+# uses no cookies/auth, so credentials are disabled (a "*" + credentials combo is
+# invalid anyway). Preview deployments of the frontend project are matched by regex.
+# This is browser-enforced defense-in-depth; it does not replace rate limiting.
+_ALLOWED_ORIGINS = [
+    "https://intentengine.vercel.app",
+    "https://dist-pied-one-60.vercel.app",
+    "http://localhost:8080",
+    "http://localhost:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://intent-engine-[a-z0-9-]+\.vercel\.app",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 # Initialize engines (stateless singletons)
