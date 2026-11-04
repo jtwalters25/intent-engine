@@ -96,7 +96,7 @@ export default function ScoringFormula({ item }: ScoringFormulaProps) {
               {'\n'}
               <span className="text-white/40">{'// Stimulation Index ('}{item.stim.provenance.toLowerCase()}{') · cap '}{STIM_CAP}{'\n'}</span>
               <span className="text-white/60">{'stim = '}</span>
-              <span className={b.stimIndex > STIM_CAP ? 'text-red-400 font-bold' : 'text-green-400'}>{fmtMul(b.stimIndex)}</span>
+              <span className={b.stimBlocked ? 'text-red-400 font-bold' : 'text-white/80'}>{fmtMul(b.stimIndex)}</span>
               {'\n'}
               <span className="text-white/40">{'  pacing    '}</span><span className="text-white/70">{item.stim.cutsPerMin} cuts/min</span>{'\n'}
               <span className="text-white/40">{'  loudness  '}</span><span className="text-white/70">{item.stim.loudnessLufs} LUFS</span>{'\n'}
