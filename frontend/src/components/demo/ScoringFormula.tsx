@@ -19,7 +19,7 @@ function mulColor(val: number): string {
 export default function ScoringFormula({ item }: ScoringFormulaProps) {
   if (!item) {
     return (
-      <div className="rounded-lg border border-white/10 bg-[#0d0d0d] p-4">
+      <div className="rounded-lg border border-white/10 bg-[var(--demo-panel)] p-4">
         <h3 className="font-syne text-sm font-bold text-white/80 mb-3">Scoring Formula</h3>
         <p className="font-dm-mono text-[11px] text-white/30">Select or hover an item to see its breakdown</p>
       </div>
@@ -29,7 +29,7 @@ export default function ScoringFormula({ item }: ScoringFormulaProps) {
   const b: ScoringBreakdown = item.breakdown;
 
   return (
-    <div className="rounded-lg border border-white/10 bg-[#0d0d0d] p-4">
+    <div className="rounded-lg border border-white/10 bg-[var(--demo-panel)] p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-syne text-sm font-bold text-white/80">Scoring Formula</h3>
         <span className="font-dm-mono text-[10px] text-white/30">{item.emoji} {item.title}</span>

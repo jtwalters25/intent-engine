@@ -18,6 +18,16 @@ import AgenticMode from '@/components/demo/AgenticMode';
 
 export default function Demo() {
   const [mode, setMode] = useState<'signals' | 'agentic'>('signals');
+  const [calm, setCalm] = useState<boolean>(() => {
+    try { return localStorage.getItem('demo-calm') === '1'; } catch { return false; }
+  });
+  const toggleCalm = useCallback(() => {
+    setCalm((v) => {
+      const next = !v;
+      try { localStorage.setItem('demo-calm', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
   const [activePlatform, setActivePlatform] = useState<PlatformKey>('streaming');
   const [activeContextMap, setActiveContextMap] = useState<Record<PlatformKey, string>>({
     streaming: 'bedtime',
@@ -90,7 +100,7 @@ export default function Demo() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className={`demo-root min-h-screen bg-[var(--demo-bg)] text-white transition-colors duration-500 ${calm ? 'demo-calm' : ''}`}>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <header className="mb-6">
@@ -102,9 +112,12 @@ export default function Demo() {
           </p>
         </header>
 
-        <div className="mb-6 flex gap-2" aria-label="Demo mode">
+        <div className="mb-6 flex flex-wrap items-center gap-2" aria-label="Demo mode">
           <button type="button" aria-pressed={mode === 'signals'} onClick={() => setMode('signals')} className="rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">Signal Mode</button>
           <button type="button" aria-pressed={mode === 'agentic'} onClick={() => setMode('agentic')} className="rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">Agentic Mode</button>
+          <button type="button" aria-pressed={calm} onClick={toggleCalm} title="Warm, low-stimulation palette" className="ml-auto rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">
+            {calm ? '🌙 Calm: on' : '🌙 Calm: off'}
+          </button>
         </div>
 
         {mode === 'agentic' ? <AgenticMode /> : <>
