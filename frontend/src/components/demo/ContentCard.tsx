@@ -1,4 +1,4 @@
-import { computeStimIndex, STIM_CAP } from '@/data/demoPlatforms';
+import { computeStimIndex } from '@/data/demoPlatforms';
 import type { PlatformItem, RankedPlatformItem } from '@/data/demoPlatforms';
 
 interface ContentCardProps {
@@ -88,11 +88,12 @@ export default function ContentCard({ item, rank, variant, onHover }: ContentCar
         )}
       </div>
 
-      {/* Stimulation badge (measured) */}
+      {/* Stimulation badge (measured) — red only when the wind-down gate actually blocks it,
+          not whenever the index is high (high stim is fine, even desirable, at high energy) */}
       {stimIdx !== null && (
         <div
           title="Stimulation Index (measured)"
-          className={`flex-shrink-0 px-1.5 py-1 rounded border font-dm-mono text-[10px] ${stimIdx > STIM_CAP ? 'bg-red-400/10 border-red-400/30 text-red-400' : 'bg-white/5 border-white/10 text-white/45'}`}
+          className={`flex-shrink-0 px-1.5 py-1 rounded border font-dm-mono text-[10px] ${ranked?.breakdown.stimBlocked ? 'bg-red-400/10 border-red-400/30 text-red-400' : 'bg-white/5 border-white/10 text-white/45'}`}
         >
           ⚡{stimIdx.toFixed(2)}
         </div>
