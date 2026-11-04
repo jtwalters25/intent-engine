@@ -62,10 +62,12 @@ Unmeasured → UNKNOWN → "needs verification," exactly like Discover.
 
 Prototype shipped in the `/demo` streaming vertical (client-side, fixture data):
 
-- A **measured `StimulationProfile`** on every streaming item (cuts/min, LUFS,
-  motion, saturation, flashes/s + provenance), plus a new kid-rated but hyper-paced
-  show ("Sensory Rush Rhymes", 22 cuts/min) — the whole point: it passes the
-  maturity gate but is **over-stimulating**.
+- A `StimulationProfile` on every streaming item (cuts/min, LUFS, motion,
+  saturation, flashes/s + provenance), plus a new kid-rated but hyper-paced show
+  ("Sensory Rush Rhymes", 22 cuts/min) — the whole point: it passes the maturity
+  gate but is **over-stimulating**. In this prototype these values are hand-set
+  anchors tagged `ESTIMATED`, not measured from clips; the production pipeline
+  below produces `MEASURED` values.
 - A **wind-down stim gate**: when energy intent is low (bedtime), items with a
   Stimulation Index above the cap (0.5) are **hard-blocked** — mirroring the
   maturity gate. At bedtime, Dark S3 blocks on *maturity*; Sensory Rush Rhymes
