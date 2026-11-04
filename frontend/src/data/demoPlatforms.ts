@@ -35,8 +35,10 @@ export type StimProvenance = 'MEASURED' | 'ESTIMATED' | 'UNKNOWN';
 
 // Per-title stimulation signals. In production these are computed from the video
 // (PySceneDetect cuts/min, ffmpeg ebur128 loudness, optical-flow motion, HSV
-// saturation, ITU-R BT.1702 flash detection). In this prototype they are hand-set
-// anchors, calibrated to published pacing (SpongeBob ~5.5 cuts/min, Caillou ~1.8).
+// saturation, ITU-R BT.1702 flash detection) and carry 'MEASURED' provenance.
+// In this prototype they are hand-set anchors, calibrated to published pacing
+// (SpongeBob ~5.5 cuts/min, Caillou ~1.8), so they are tagged 'ESTIMATED', not
+// 'MEASURED' — nothing here was measured from an actual clip.
 export interface StimulationProfile {
   cutsPerMin: number;       // scene changes / minute — pacing, the primary signal
   loudnessLufs: number;     // integrated loudness, ITU-R BS.1770 / EBU R128 (higher = louder)
@@ -182,35 +184,35 @@ const streamingCatalog: PlatformItem[] = [
     runtime: '52 min', tags: ['complex', 'tense', 'serialized', 'dark'],
     engagementScore: 0.94, emoji: '⏳', thumbnail: thumb('⏳', '#1a1a2e', '#16213e', 'Dark S3'),
     maturity: 'adult', calmScore: 0.1, complexity: 0.95,
-    stim: { cutsPerMin: 9, loudnessLufs: -17, motion: 0.65, colorSaturation: 0.35, flashesPerSec: 0.6, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 9, loudnessLufs: -17, motion: 0.65, colorSaturation: 0.35, flashesPerSec: 0.6, provenance: 'ESTIMATED' },
   },
   {
     id: 'rhyme-rush', title: 'Sensory Rush Rhymes', genre: 'Animation', rating: 'TV-Y',
     runtime: '8 min', tags: ['kids', 'animated', 'hyper-paced', 'high-stim', 'autoplay'],
     engagementScore: 0.90, emoji: '🌈', thumbnail: thumb('🌈', '#3a0a3a', '#0a2a3a', 'Sensory Rush Rhymes'),
     maturity: 'kids', calmScore: 0.08, complexity: 0.05,
-    stim: { cutsPerMin: 22, loudnessLufs: -13, motion: 0.92, colorSaturation: 0.97, flashesPerSec: 2.4, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 22, loudnessLufs: -13, motion: 0.92, colorSaturation: 0.97, flashesPerSec: 2.4, provenance: 'ESTIMATED' },
   },
   {
     id: 'outer-range', title: 'Outer Range', genre: 'Sci-Fi Western', rating: 'TV-14',
     runtime: '48 min', tags: ['mystery', 'tense', 'serialized', 'outdoor'],
     engagementScore: 0.91, emoji: '🏜️', thumbnail: thumb('🏜️', '#2d1b00', '#1a3a2a', 'Outer Range'),
     maturity: 'teen', calmScore: 0.25, complexity: 0.7,
-    stim: { cutsPerMin: 7, loudnessLufs: -19, motion: 0.6, colorSaturation: 0.5, flashesPerSec: 0.3, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 7, loudnessLufs: -19, motion: 0.6, colorSaturation: 0.5, flashesPerSec: 0.3, provenance: 'ESTIMATED' },
   },
   {
     id: 'inception', title: 'Inception', genre: 'Sci-Fi Action', rating: 'PG-13',
     runtime: '148 min', tags: ['complex', 'action', 'long-film', 'cerebral'],
     engagementScore: 0.87, emoji: '🌀', thumbnail: thumb('🌀', '#0f0f23', '#1a1a3e', 'Inception'),
     maturity: 'teen', calmScore: 0.15, complexity: 0.9,
-    stim: { cutsPerMin: 8, loudnessLufs: -15, motion: 0.75, colorSaturation: 0.4, flashesPerSec: 0.9, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 8, loudnessLufs: -15, motion: 0.75, colorSaturation: 0.4, flashesPerSec: 0.9, provenance: 'ESTIMATED' },
   },
   {
     id: 'the-office', title: 'The Office S1', genre: 'Comedy', rating: 'TV-14',
     runtime: '22 min', tags: ['comedy', 'familiar', 'background-friendly', 'short-episodes'],
     engagementScore: 0.82, emoji: '📎', thumbnail: thumb('📎', '#2a2a1a', '#3a3a2a', 'The Office S1'),
     maturity: 'teen', calmScore: 0.6, complexity: 0.2,
-    stim: { cutsPerMin: 9, loudnessLufs: -20, motion: 0.3, colorSaturation: 0.6, flashesPerSec: 0.1, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 9, loudnessLufs: -20, motion: 0.3, colorSaturation: 0.6, flashesPerSec: 0.1, provenance: 'ESTIMATED' },
   },
   {
     id: 'merlin', title: 'Merlin Chronicles', genre: 'Fantasy Adventure', rating: 'PG',
@@ -224,21 +226,21 @@ const streamingCatalog: PlatformItem[] = [
     runtime: '88 min', tags: ['animated', 'family', 'musical', 'all-ages', 'classic'],
     engagementScore: 0.71, emoji: '🦁', thumbnail: thumb('🦁', '#3a2a00', '#2a1a00', 'The Lion King'),
     maturity: 'family', calmScore: 0.5, complexity: 0.2,
-    stim: { cutsPerMin: 6, loudnessLufs: -20, motion: 0.5, colorSaturation: 0.8, flashesPerSec: 0.3, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 6, loudnessLufs: -20, motion: 0.5, colorSaturation: 0.8, flashesPerSec: 0.3, provenance: 'ESTIMATED' },
   },
   {
     id: 'planet-earth', title: 'Planet Earth III', genre: 'Documentary', rating: 'TV-G',
     runtime: '28 min', tags: ['documentary', 'educational', 'calming', 'nature', 'short-episodes'],
     engagementScore: 0.65, emoji: '🌍', thumbnail: thumb('🌍', '#0a2a1a', '#1a3a2a', 'Planet Earth III'),
     maturity: 'family', calmScore: 0.9, complexity: 0.3,
-    stim: { cutsPerMin: 3, loudnessLufs: -24, motion: 0.45, colorSaturation: 0.7, flashesPerSec: 0.1, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 3, loudnessLufs: -24, motion: 0.45, colorSaturation: 0.7, flashesPerSec: 0.1, provenance: 'ESTIMATED' },
   },
   {
     id: 'bluey', title: 'Bluey S4', genre: 'Animation', rating: 'TV-Y',
     runtime: '7 min', tags: ['kids', 'animated', 'calming', 'short-episodes', 'soothing', 'G-rated'],
     engagementScore: 0.58, emoji: '🐕', thumbnail: thumb('🐕', '#1a2a3e', '#2a3a4e', 'Bluey S4'),
     maturity: 'kids', calmScore: 0.85, complexity: 0.05,
-    stim: { cutsPerMin: 4, loudnessLufs: -23, motion: 0.3, colorSaturation: 0.5, flashesPerSec: 0.1, provenance: 'MEASURED' },
+    stim: { cutsPerMin: 4, loudnessLufs: -23, motion: 0.3, colorSaturation: 0.5, flashesPerSec: 0.1, provenance: 'ESTIMATED' },
   },
 ];
 

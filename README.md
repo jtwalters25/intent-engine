@@ -32,7 +32,7 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 
 **Key capabilities:**
 - Rules-first intent translation (keyword mapping, time-of-day inference)
-- Soft-constraint re-ranking (intent boosts items but never filters them)
+- Soft-constraint re-ranking (intent re-orders without filtering), with hard gates as the exception: a maturity gate and a bedtime stimulation gate can block items before ranking
 - Multiplier-based scoring with transparent formula display
 - Prophecy Agent for time-aware scheduling (auto-switch to bedtime mode at 8 PM)
 - Multi-vertical demo (Streaming, Music, E-Commerce, Ride Matching, Food Delivery)
@@ -292,7 +292,7 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 ## Design Principles
 
 1. **Determinism:** same input, same output, every time
-2. **Soft constraints:** intent re-ranks, never filters
+2. **Soft constraints:** intent re-ranks without filtering; the exception is hard gates (maturity, bedtime stimulation), which block before ranking
 3. **Explainability:** every score has a human-readable reason
 4. **Rules first:** no LLM dependency; the LLM is optional and off by default
 5. **Safe defaults:** unknown input degrades gracefully to base-score ordering
