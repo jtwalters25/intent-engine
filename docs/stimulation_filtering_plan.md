@@ -13,9 +13,11 @@ high-motion); a `PG` film can be calm. Over-stimulation is:
   fast-paced cartoon (SpongeBob, ~5.5 scene cuts/min) measurably impaired
   4-year-olds' executive function vs. a slow-paced show (Caillou, ~1.8 cuts/min)
   or drawing.
-- **Unverified** — it appears in **zero** provider "verified" fields. A naive LLM
-  asked "is this calming?" guesses. We **measure** it. That measurement is the moat
-  and the clearest demonstration of the "trust, not taste" thesis.
+- **Unverified** — it appears in **zero** provider "verified" fields. Ask an LLM "is
+  this calming?" and you get an *estimate* — sometimes reasonable, but ungrounded,
+  unreproducible, and stated with the same confidence whether the model is recalling
+  a fact or inventing one. We **measure** it from the video and show every input.
+  That's the moat, and the clearest demonstration of the "trust, not taste" thesis.
 
 ## Three distinct axes (do not conflate)
 
