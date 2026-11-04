@@ -85,7 +85,11 @@ Google Places, Ticketmaster, and Eventbrite. Ordered by dependency.
 ## 8. Evaluation on real data (spec §16)
 - [ ] Wire the three arms (`relevance`, `llm_only`, `intent_engine`) to live
   candidate pools; have a human create `GroundTruthLabel`s per session.
-- [ ] Implement a real `LLMClient` behind `DISCOVER_LLM_GATEWAY_URL` for arm B.
+- [x] Implement a real `LLMClient` for arm B — `discover/evaluation/llm_client.py`
+  (`AnthropicLLMClient`, `claude-opus-4-8`, adaptive thinking, structured outputs;
+  off by default, lazy-imported, injectable, gated on `ANTHROPIC_API_KEY`). Note:
+  gated on `ANTHROPIC_API_KEY` via the SDK, not `DISCOVER_LLM_GATEWAY_URL`. A live
+  run still needs the key set in the backend env.
 - [ ] Pre-register §16.2 go/no-go thresholds before recruiting testers.
 
 ## 9. Frontend for production
