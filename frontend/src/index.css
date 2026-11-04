@@ -244,3 +244,18 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
+
+/*
+ * Demo theme: dark (default) and "calm" (warm, low-stimulation).
+ * Only the two solid dark surfaces are variables; every other demo surface is
+ * white-translucent, so it inherits warmth from the ground automatically. A demo
+ * about reducing over-stimulation should not itself be visually over-stimulating.
+ */
+.demo-root {
+  --demo-bg: #0a0a0a;
+  --demo-panel: #0d0d0d;
+}
+.demo-root.demo-calm {
+  --demo-bg: #1c1813;
+  --demo-panel: #241e17;
+}
