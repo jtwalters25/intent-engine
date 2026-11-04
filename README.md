@@ -344,6 +344,14 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 - **"GenPage: Towards End-to-End Generative Homepage Construction at Netflix"** ([Netflix Technology Blog, 2026](https://netflixtechblog.com/genpage-towards-end-to-end-generative-homepage-construction-at-netflix-77146fba8a08)) assembles the homepage with a learned generative model. Intent Engine takes the opposite approach: deterministic and explainable rather than generative, where the same context always produces the same, traceable ordering.
 - **Honest limitation:** deterministic scoring gives no causal identification of targeting effects. Because every item is always scored and reordered, never randomly held out, the engine can show *what* the multipliers do but cannot measure their *causal lift*. That would require explicit exploration slots (randomized holdouts), which the engine does not currently have.
 
+## How this was built
+
+I used AI as a development accelerator — but the architecture is a series of judgment calls I had to make, and constraints I had to impose, before AI could execute them safely. The questions I had to answer (Should an LLM ever pick the winner? How do you stay honest when data is missing? Is "over-stimulating" the same as "adult"?) and the decisions I landed on are documented as a short ADR-style log:
+
+**→ [Design decisions](docs/DESIGN_DECISIONS.md)**
+
+The through-line: I set the intent and the constraints; AI accelerated the execution. The way I built it mirrors what it does — human intent and policy in front, deterministic and auditable execution behind.
+
 ## About
 
 Built by [Jeremiah Walters](https://www.linkedin.com/in/jeremiahwalters/) ([GitHub](https://github.com/jtwalters25)). Exploring how thoughtful systems design can make streaming better for families.
