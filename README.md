@@ -1,5 +1,15 @@
 # Intent Engine
 
+**A deterministic re-ranking layer that adapts recommendations to the moment (who's watching, time of day, parent-set intent), with every ranking explained.**
+
+![Demo Overview](docs/screenshots/07-demo-overview.png)
+
+**Try the demo:** https://intentengine.vercel.app/demo
+
+Pick a context, drag the signal sliders, and watch the same catalog re-rank live, with the scoring formula shown for every item.
+
+First commit: February 2026.
+
 A deterministic, intent-aware re-ranking engine with a React prototype UI. It shows how contextual intent signals (time of day, viewer profile, energy level, device) can reshape content recommendations without ML, personalization, or randomness.
 
 > **Prototype.** Built to demonstrate systems thinking and backend architecture, not a production service.
@@ -15,6 +25,23 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 - **[Home](https://intentengine.vercel.app):** parent-intent wizard flow with kid browse, content detail, and PIN gate.
 
 > Also reachable at the original URL, [dist-pied-one-60.vercel.app](https://dist-pied-one-60.vercel.app), which still works.
+
+## What It Does
+
+**Problem:** Parents spend ~10 min/day manually filtering content. Streaming recommendations optimize for engagement, not parental intent.
+
+**Solution:** A re-ranking layer that sits between retrieval and presentation. Parents express context once ("it's bedtime"), and the system adapts deterministically and explainably, with no ML required.
+
+**Key capabilities:**
+- Rules-first intent translation (keyword mapping, time-of-day inference)
+- Soft-constraint re-ranking (intent boosts items but never filters them)
+- Multiplier-based scoring with transparent formula display
+- Prophecy Agent for time-aware scheduling (auto-switch to bedtime mode at 8 PM)
+- Multi-vertical demo (Streaming, Music, E-Commerce, Ride Matching, Food Delivery)
+- Structured explanations for every ranking decision
+- Optional LLM fallback (off by default, env-var gated)
+
+## Other Experiments
 
 ### Discover — real-world activity discovery (live, backend-connected)
 
@@ -32,21 +59,6 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 **Python Backend:** Fully implemented — **1,200+ passing tests** (legacy ranking, V4 agentic planning/execution, and the Discover pilot).
 
 > **Note:** The `/demo` verticals run the deterministic ranking *client-side* (mock data). The newer **Discover** and **V4 Agentic Mode** flows call the real Python backend — Discover's live API is deployed above.
-
-## What It Does
-
-**Problem:** Parents spend ~10 min/day manually filtering content. Streaming recommendations optimize for engagement, not parental intent.
-
-**Solution:** A re-ranking layer that sits between retrieval and presentation. Parents express context once ("it's bedtime"), and the system adapts deterministically and explainably, with no ML required.
-
-**Key capabilities:**
-- Rules-first intent translation (keyword mapping, time-of-day inference)
-- Soft-constraint re-ranking (intent boosts items but never filters them)
-- Multiplier-based scoring with transparent formula display
-- Prophecy Agent for time-aware scheduling (auto-switch to bedtime mode at 8 PM)
-- Multi-vertical demo (Streaming, Music, E-Commerce, Ride Matching, Food Delivery)
-- Structured explanations for every ranking decision
-- Optional LLM fallback (off by default, env-var gated)
 
 ## Interactive Demo (`/demo`)
 
