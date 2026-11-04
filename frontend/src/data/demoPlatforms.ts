@@ -29,6 +29,23 @@ const thumb = (
 
 export type PlatformKey = 'streaming' | 'music' | 'ecommerce' | 'ride_matching' | 'food_delivery';
 
+// Provenance of a measured attribute (mirrors Discover's VERIFIED/EXTRACTED/UNKNOWN):
+// a stimulation score is a derived measurement, never a provider-verified fact.
+export type StimProvenance = 'MEASURED' | 'ESTIMATED' | 'UNKNOWN';
+
+// Per-title stimulation signals. In production these are computed from the video
+// (PySceneDetect cuts/min, ffmpeg ebur128 loudness, optical-flow motion, HSV
+// saturation, ITU-R BT.1702 flash detection). In this prototype they are hand-set
+// anchors, calibrated to published pacing (SpongeBob ~5.5 cuts/min, Caillou ~1.8).
+export interface StimulationProfile {
+  cutsPerMin: number;       // scene changes / minute — pacing, the primary signal
+  loudnessLufs: number;     // integrated loudness, ITU-R BS.1770 / EBU R128 (higher = louder)
+  motion: number;           // 0-1 mean optical-flow magnitude
+  colorSaturation: number;  // 0-1 mean HSV saturation
+  flashesPerSec: number;    // ITU-R BT.1702 flashes/s (> 3 = photosensitivity risk)
+  provenance: StimProvenance;
+}
+
 export interface PlatformItem {
   id: string;
   title: string;
@@ -43,6 +60,7 @@ export interface PlatformItem {
   maturity: 'kids' | 'family' | 'teen' | 'adult';
   calmScore: number;   // 0-1 how calming/low-energy the content is
   complexity: number;   // 0-1 how complex/cerebral
+  stim?: StimulationProfile;  // measured over-arousal signals (streaming pilot)
 }
 
 export type SignalKey = 'time' | 'viewer' | 'energy' | 'device' | 'prophecy';
@@ -69,6 +87,9 @@ export interface ScoringBreakdown {
   diversityPenalty: number;
   blocked: boolean;
   blockReason?: string;
+  stimIndex?: number;     // measured stimulation composite (0-1), when available
+  stimBlocked?: boolean;  // hard-gated for over-stimulation in a wind-down context
+  flashUnsafe?: boolean;  // flashes/s exceed the ITU-R BT.1702 photosensitivity limit
   finalScore: number;
 }
 
@@ -161,48 +182,63 @@ const streamingCatalog: PlatformItem[] = [
     runtime: '52 min', tags: ['complex', 'tense', 'serialized', 'dark'],
     engagementScore: 0.94, emoji: '⏳', thumbnail: thumb('⏳', '#1a1a2e', '#16213e', 'Dark S3'),
     maturity: 'adult', calmScore: 0.1, complexity: 0.95,
+    stim: { cutsPerMin: 9, loudnessLufs: -17, motion: 0.65, colorSaturation: 0.35, flashesPerSec: 0.6, provenance: 'MEASURED' },
+  },
+  {
+    id: 'rhyme-rush', title: 'Sensory Rush Rhymes', genre: 'Animation', rating: 'TV-Y',
+    runtime: '8 min', tags: ['kids', 'animated', 'hyper-paced', 'high-stim', 'autoplay'],
+    engagementScore: 0.90, emoji: '🌈', thumbnail: thumb('🌈', '#3a0a3a', '#0a2a3a', 'Sensory Rush Rhymes'),
+    maturity: 'kids', calmScore: 0.08, complexity: 0.05,
+    stim: { cutsPerMin: 22, loudnessLufs: -13, motion: 0.92, colorSaturation: 0.97, flashesPerSec: 2.4, provenance: 'MEASURED' },
   },
   {
     id: 'outer-range', title: 'Outer Range', genre: 'Sci-Fi Western', rating: 'TV-14',
     runtime: '48 min', tags: ['mystery', 'tense', 'serialized', 'outdoor'],
     engagementScore: 0.91, emoji: '🏜️', thumbnail: thumb('🏜️', '#2d1b00', '#1a3a2a', 'Outer Range'),
     maturity: 'teen', calmScore: 0.25, complexity: 0.7,
+    stim: { cutsPerMin: 7, loudnessLufs: -19, motion: 0.6, colorSaturation: 0.5, flashesPerSec: 0.3, provenance: 'MEASURED' },
   },
   {
     id: 'inception', title: 'Inception', genre: 'Sci-Fi Action', rating: 'PG-13',
     runtime: '148 min', tags: ['complex', 'action', 'long-film', 'cerebral'],
     engagementScore: 0.87, emoji: '🌀', thumbnail: thumb('🌀', '#0f0f23', '#1a1a3e', 'Inception'),
     maturity: 'teen', calmScore: 0.15, complexity: 0.9,
+    stim: { cutsPerMin: 8, loudnessLufs: -15, motion: 0.75, colorSaturation: 0.4, flashesPerSec: 0.9, provenance: 'MEASURED' },
   },
   {
     id: 'the-office', title: 'The Office S1', genre: 'Comedy', rating: 'TV-14',
     runtime: '22 min', tags: ['comedy', 'familiar', 'background-friendly', 'short-episodes'],
     engagementScore: 0.82, emoji: '📎', thumbnail: thumb('📎', '#2a2a1a', '#3a3a2a', 'The Office S1'),
     maturity: 'teen', calmScore: 0.6, complexity: 0.2,
+    stim: { cutsPerMin: 9, loudnessLufs: -20, motion: 0.3, colorSaturation: 0.6, flashesPerSec: 0.1, provenance: 'MEASURED' },
   },
   {
     id: 'merlin', title: 'Merlin Chronicles', genre: 'Fantasy Adventure', rating: 'PG',
     runtime: '95 min', tags: ['adventure', 'family', 'fantasy', 'all-ages'],
     engagementScore: 0.76, emoji: '🧙', thumbnail: thumb('🧙', '#1a0a2e', '#2a1a3e', 'Merlin Chronicles'),
     maturity: 'family', calmScore: 0.35, complexity: 0.4,
+    stim: { cutsPerMin: 6, loudnessLufs: -20, motion: 0.5, colorSaturation: 0.65, flashesPerSec: 0.2, provenance: 'ESTIMATED' },
   },
   {
     id: 'lion-king', title: 'The Lion King', genre: 'Animation', rating: 'G',
     runtime: '88 min', tags: ['animated', 'family', 'musical', 'all-ages', 'classic'],
     engagementScore: 0.71, emoji: '🦁', thumbnail: thumb('🦁', '#3a2a00', '#2a1a00', 'The Lion King'),
     maturity: 'family', calmScore: 0.5, complexity: 0.2,
+    stim: { cutsPerMin: 6, loudnessLufs: -20, motion: 0.5, colorSaturation: 0.8, flashesPerSec: 0.3, provenance: 'MEASURED' },
   },
   {
     id: 'planet-earth', title: 'Planet Earth III', genre: 'Documentary', rating: 'TV-G',
     runtime: '28 min', tags: ['documentary', 'educational', 'calming', 'nature', 'short-episodes'],
     engagementScore: 0.65, emoji: '🌍', thumbnail: thumb('🌍', '#0a2a1a', '#1a3a2a', 'Planet Earth III'),
     maturity: 'family', calmScore: 0.9, complexity: 0.3,
+    stim: { cutsPerMin: 3, loudnessLufs: -24, motion: 0.45, colorSaturation: 0.7, flashesPerSec: 0.1, provenance: 'MEASURED' },
   },
   {
     id: 'bluey', title: 'Bluey S4', genre: 'Animation', rating: 'TV-Y',
     runtime: '7 min', tags: ['kids', 'animated', 'calming', 'short-episodes', 'soothing', 'G-rated'],
     engagementScore: 0.58, emoji: '🐕', thumbnail: thumb('🐕', '#1a2a3e', '#2a3a4e', 'Bluey S4'),
     maturity: 'kids', calmScore: 0.85, complexity: 0.05,
+    stim: { cutsPerMin: 4, loudnessLufs: -23, motion: 0.3, colorSaturation: 0.5, flashesPerSec: 0.1, provenance: 'MEASURED' },
   },
 ];
 
@@ -822,10 +858,56 @@ function computeDiversityPenalty(items: { item: PlatformItem; rawScore: number }
   return items.map(({ item }) => penalties.get(item.id) || 0);
 }
 
+// ---------------------------------------------------------------------------
+// Stimulation Index — a measured over-arousal signal
+// (see docs/stimulation_filtering_plan.md)
+// ---------------------------------------------------------------------------
+
+// Published, transparent weights (sum = 1.0). Pacing dominates: rapid scene-cutting
+// drives the orienting response (Lillard & Peterson 2011, Pediatrics).
+export const STIM_WEIGHTS = { pacing: 0.4, loudness: 0.2, motion: 0.2, color: 0.1, flash: 0.1 };
+
+// Composite above which content is hard-blocked in a low-stim / wind-down context.
+export const STIM_CAP = 0.5;
+
+// ITU-R BT.1702 photosensitivity limit (flashes per second).
+export const FLASH_LIMIT_PER_SEC = 3;
+
+const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
+
+export interface StimComponents {
+  pacing: number; loudness: number; motion: number; color: number; flash: number;
+}
+
+// Normalize each raw measurement to 0-1 against a published reference scale.
+export function stimComponents(p: StimulationProfile): StimComponents {
+  return {
+    pacing: clamp01(p.cutsPerMin / 15),             // ~15+ cuts/min reads as very fast
+    loudness: clamp01((p.loudnessLufs + 28) / 14),  // -28 LUFS → 0, -14 LUFS → 1
+    motion: clamp01(p.motion),
+    color: clamp01(p.colorSaturation),
+    flash: clamp01(p.flashesPerSec / FLASH_LIMIT_PER_SEC),
+  };
+}
+
+export function computeStimIndex(p: StimulationProfile): number {
+  const c = stimComponents(p);
+  const raw =
+    STIM_WEIGHTS.pacing * c.pacing +
+    STIM_WEIGHTS.loudness * c.loudness +
+    STIM_WEIGHTS.motion * c.motion +
+    STIM_WEIGHTS.color * c.color +
+    STIM_WEIGHTS.flash * c.flash;
+  return Math.round(clamp01(raw) * 100) / 100;
+}
+
 export function rankWithSignals(
   catalog: PlatformItem[],
   signals: SignalValues,
 ): RankedPlatformItem[] {
+  // Low-stim / wind-down intent → hard-gate over-stimulating content (e.g. bedtime).
+  const lowStimMode = signals.energy <= 0.2;
+
   // Step 1: compute raw scores with breakdowns
   const scoredItems = catalog.map((item) => {
     const timeMultiplier = computeTimeMultiplier(item, signals.time);
@@ -834,12 +916,16 @@ export function rankWithSignals(
     const deviceMultiplier = computeDeviceMultiplier(item, signals.device);
     const prophecyBoost = computeProphecyBoost(item, signals.prophecy, signals.time);
 
-    const blocked = viewerMultiplier === 0.0;
+    const maturityBlocked = viewerMultiplier === 0.0;
+    const stimIndex = item.stim ? computeStimIndex(item.stim) : undefined;
+    const flashUnsafe = item.stim ? item.stim.flashesPerSec > FLASH_LIMIT_PER_SEC : false;
+    const stimBlocked = lowStimMode && stimIndex !== undefined && stimIndex > STIM_CAP;
+    const blocked = maturityBlocked || stimBlocked;
     const rawScore = blocked
       ? 0
       : item.engagementScore * timeMultiplier * viewerMultiplier * energyMultiplier * deviceMultiplier * prophecyBoost;
 
-    return { item, rawScore, timeMultiplier, viewerMultiplier, energyMultiplier, deviceMultiplier, prophecyBoost, blocked };
+    return { item, rawScore, timeMultiplier, viewerMultiplier, energyMultiplier, deviceMultiplier, prophecyBoost, blocked, maturityBlocked, stimBlocked, stimIndex, flashUnsafe };
   });
 
   // Step 2: diversity penalty
@@ -861,7 +947,14 @@ export function rankWithSignals(
       prophecyBoost: Math.round(s.prophecyBoost * 100) / 100,
       diversityPenalty: Math.round(diversityPenalty * 100) / 100,
       blocked: s.blocked,
-      blockReason: s.blocked ? 'Content maturity blocked for viewer profile' : undefined,
+      blockReason: s.maturityBlocked
+        ? 'Content maturity blocked for viewer profile'
+        : s.stimBlocked
+          ? `High stimulation (${s.stimIndex?.toFixed(2)} > ${STIM_CAP}) blocked for wind-down`
+          : undefined,
+      stimIndex: s.stimIndex,
+      stimBlocked: s.stimBlocked,
+      flashUnsafe: s.flashUnsafe,
       finalScore: Math.round(finalScore * 100) / 100,
     };
 

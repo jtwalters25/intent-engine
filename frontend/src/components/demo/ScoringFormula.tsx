@@ -1,3 +1,4 @@
+import { STIM_CAP } from '@/data/demoPlatforms';
 import type { ScoringBreakdown, RankedPlatformItem } from '@/data/demoPlatforms';
 
 interface ScoringFormulaProps {
@@ -90,12 +91,27 @@ export default function ScoringFormula({ item }: ScoringFormulaProps) {
           <span className="text-green-300 font-bold">{fmtMul(b.finalScore)}</span>
           {'\n'}
 
+          {item.stim && b.stimIndex !== undefined && (
+            <>
+              {'\n'}
+              <span className="text-white/40">{'// Stimulation Index ('}{item.stim.provenance.toLowerCase()}{') · cap '}{STIM_CAP}{'\n'}</span>
+              <span className="text-white/60">{'stim = '}</span>
+              <span className={b.stimIndex > STIM_CAP ? 'text-red-400 font-bold' : 'text-green-400'}>{fmtMul(b.stimIndex)}</span>
+              {'\n'}
+              <span className="text-white/40">{'  pacing    '}</span><span className="text-white/70">{item.stim.cutsPerMin} cuts/min</span>{'\n'}
+              <span className="text-white/40">{'  loudness  '}</span><span className="text-white/70">{item.stim.loudnessLufs} LUFS</span>{'\n'}
+              <span className="text-white/40">{'  motion    '}</span><span className="text-white/70">{fmtMul(item.stim.motion)}</span>{'\n'}
+              <span className="text-white/40">{'  color     '}</span><span className="text-white/70">{fmtMul(item.stim.colorSaturation)}</span>{'\n'}
+              <span className="text-white/40">{'  flash     '}</span><span className={b.flashUnsafe ? 'text-red-400' : 'text-white/70'}>{item.stim.flashesPerSec}/s{b.flashUnsafe ? '  ⚠ > ITU 3/s' : ''}</span>{'\n'}
+            </>
+          )}
+
           {b.blocked && (
             <>
               {'\n'}
               <span className="text-red-400">{'// '}{b.blockReason || 'BLOCKED'}</span>
               {'\n'}
-              <span className="text-red-400/70">{'if (maturity === "adult" && viewer === "kids") → BLOCKED'}</span>
+              <span className="text-red-400/70">{b.stimBlocked ? 'if (stim > cap && intent === "wind-down") → BLOCKED' : 'if (maturity === "adult" && viewer === "kids") → BLOCKED'}</span>
             </>
           )}
         </code>
