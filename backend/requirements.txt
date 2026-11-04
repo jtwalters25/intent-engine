@@ -2,3 +2,4 @@ pydantic>=2.0.0
 fastapi>=0.109.1
 uvicorn>=0.20.0
 httpx>=0.24.0
+anthropic  # Discover eval arm B (optional, lazy-imported); structured outputs need a recent SDK
