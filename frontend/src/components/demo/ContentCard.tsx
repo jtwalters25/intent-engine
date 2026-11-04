@@ -1,3 +1,4 @@
+import { computeStimIndex, STIM_CAP } from '@/data/demoPlatforms';
 import type { PlatformItem, RankedPlatformItem } from '@/data/demoPlatforms';
 
 interface ContentCardProps {
@@ -29,6 +30,7 @@ export default function ContentCard({ item, rank, variant, onHover }: ContentCar
   const isBoosted = ranked?.status === 'boosted';
   const isBlocked = ranked?.status === 'blocked';
   const isDemoted = ranked?.status === 'demoted';
+  const stimIdx = item.stim ? computeStimIndex(item.stim) : null;
 
   const handleMouseEnter = () => {
     if (ranked && onHover) onHover(ranked);
@@ -86,6 +88,16 @@ export default function ContentCard({ item, rank, variant, onHover }: ContentCar
         )}
       </div>
 
+      {/* Stimulation badge (measured) */}
+      {stimIdx !== null && (
+        <div
+          title="Stimulation Index (measured)"
+          className={`flex-shrink-0 px-1.5 py-1 rounded border font-dm-mono text-[10px] ${stimIdx > STIM_CAP ? 'bg-red-400/10 border-red-400/30 text-red-400' : 'bg-white/5 border-white/10 text-white/45'}`}
+        >
+          ⚡{stimIdx.toFixed(2)}
+        </div>
+      )}
+
       {/* Score badge */}
       <div className={`flex-shrink-0 px-2 py-1 rounded border font-dm-mono text-xs font-medium ${scoreBg(score)} ${scoreColor(score)}`}>
         {score.toFixed(2)}
@@ -105,7 +117,7 @@ export default function ContentCard({ item, rank, variant, onHover }: ContentCar
       {isBlocked && (
         <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/40 border-l-2 border-red-500">
           <span className="font-dm-mono text-xs text-red-400/80 bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">
-            BLOCKED
+            {ranked?.breakdown.stimBlocked ? 'BLOCKED · HIGH STIM' : 'BLOCKED · MATURITY'}
           </span>
         </div>
       )}

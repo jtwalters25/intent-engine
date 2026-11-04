@@ -83,7 +83,7 @@ export default function Demo() {
   }, []);
 
   const streamingInsights: Record<string, string> = {
-    'bedtime': 'Dark S3 blocked. Bluey jumps #8 → #1. Calm content dominates.',
+    'bedtime': 'Dark S3 blocked (maturity). Sensory Rush Rhymes blocked (high stimulation, measured). Calm picks like Bluey rise.',
     'solo-morning': 'Adult content unlocked. Kids content drops. Complex titles rise.',
     'family-weekend': 'Everything available. Family content surfaces. Energy drives ranking.',
     'focus-session': 'Short-form and background-friendly content rises. Long/complex drops.',
