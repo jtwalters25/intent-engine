@@ -50,13 +50,9 @@ const WizardContent: React.FC = () => {
     <div className={`min-h-screen bg-background transition-all duration-700 ${getTimeBackground()} ${isKidView ? 'kid-mode' : ''}`}>
       {renderStep()}
 
-      {/* Link to the live Discover demo */}
-      <a
-        href="/discover"
-        className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium shadow-lg bg-card/90 backdrop-blur-sm text-foreground border border-border/50 hover:bg-card transition-all duration-300"
-      >
-        🧭 Try Discover
-      </a>
+      {/* Discover (real-world activity finder) lives at /discover but is intentionally
+          unlinked from the homepage: the streaming re-ranking story is the focus, and
+          the name collides with Netflix "AI Discover". The route and page remain live. */}
 
       {showToggle && (
         <button
