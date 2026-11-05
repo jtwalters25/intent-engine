@@ -90,8 +90,11 @@ const IntentSetupScreen: React.FC = () => {
     setEnergyLevel,
     toggleLearningFocus,
     setAgeRange,
+    setCurrentStep,
     nextStep,
   } = useWizard();
+
+  const activeProfile = state.profiles.find((p) => p.id === state.activeProfileId);
 
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -149,6 +152,18 @@ const IntentSetupScreen: React.FC = () => {
           <Shield className="w-4 h-4" />
           <span className="text-xs font-medium tracking-wide uppercase">Parent-Intent Mode</span>
         </div>
+
+        {/* Who's watching — profile entry, reachable from the first screen */}
+        <button
+          type="button"
+          onClick={() => setCurrentStep(4)}
+          className="mx-auto mb-6 flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-4 py-2 text-sm text-foreground backdrop-blur-sm transition-colors hover:bg-card"
+          title="Switch profile"
+        >
+          <span className="text-lg" aria-hidden>{activeProfile?.avatar ?? '👤'}</span>
+          <span className="font-medium">{activeProfile?.name ?? 'Choose profile'}</span>
+          <span className="text-xs text-muted-foreground">· Switch profile</span>
+        </button>
 
         {/* Header */}
         <div className="text-center mb-8 animate-slide-up" style={{ animationDelay: '0.05s' }}>
