@@ -40,7 +40,7 @@ export const SAMPLE_PROFILES: Profile[] = [
   {
     id: 'parent', name: 'Parent', kind: 'adult', ageMin: 18, ageMax: null, avatar: '🧑',
     maturityGate: false, stimCap: null,
-    defaults: { energyLevel: 60, ageRange: '18-99', prioritizeEducational: false, lowerStimulation: false, viewingTimeLimit: 90, endOnCalmNote: false },
+    defaults: { energyLevel: 60, ageRange: '0-99', prioritizeEducational: false, lowerStimulation: false, viewingTimeLimit: 90, endOnCalmNote: false },
   },
   {
     id: 'toddler', name: 'Toddler', kind: 'kid', ageMin: 2, ageMax: 4, avatar: '🧸',
