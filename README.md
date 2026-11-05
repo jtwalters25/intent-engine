@@ -71,6 +71,7 @@ The `/demo` page is an interactive demo showing the engine's re-ranking behavior
 | **Signal Sliders** | 5 tweakable signals: Time of Day, Viewer Profile, Energy Intent, Device, Prophecy Schedule |
 | **Before / After** | Side-by-side view showing engagement-only vs. intent-adjusted ranking |
 | **Scoring Formula** | Live code-style display showing the multiplier breakdown for any item |
+| [**Stimulation Index**](docs/stimulation_filtering_plan.md) | Scores pacing (cuts/min), loudness (LUFS), and motion per title. Values in the demo are estimated. At bedtime, a hard gate holds back over-stimulating titles even when the age rating is fine. |
 | **Prophecy Agent** | Mock scheduling indicator with countdown timer |
 
 ### Per-Vertical Status
