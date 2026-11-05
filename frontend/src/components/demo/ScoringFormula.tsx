@@ -35,7 +35,7 @@ export default function ScoringFormula({ item }: ScoringFormulaProps) {
         <span className="font-dm-mono text-[10px] text-white/30">{item.emoji} {item.title}</span>
       </div>
 
-      <pre className="font-dm-mono text-[11px] leading-relaxed overflow-x-auto">
+      <pre className="font-dm-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words">
         <code>
           <span className="text-white/40">{'// Multiplier-based scoring\n'}</span>
           <span className="text-white/60">{'final_score = '}</span>

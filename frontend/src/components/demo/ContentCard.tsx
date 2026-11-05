@@ -73,55 +73,49 @@ export default function ContentCard({ item, rank, variant, onHover }: ContentCar
         {item.emoji}
       </div>
 
-      {/* Info */}
+      {/* Info — title wraps (no truncation) so it stays fully readable */}
       <div className="flex-1 min-w-0">
-        <div className="font-syne font-bold text-sm text-white/90 truncate">
+        <div className="font-syne font-bold text-sm text-white/90 leading-tight break-words">
           {item.title}
         </div>
         <div className="font-dm-mono text-[11px] text-white/40 mt-0.5">
           {item.genre} · {item.rating} · {item.runtime}
         </div>
-        {reason && variant === 'after' && !isBlocked && (
-          <div className="font-dm-mono text-[10px] text-green-400/70 mt-1 leading-tight line-clamp-2">
+        {reason && variant === 'after' && (
+          <div className={`font-dm-mono text-[10px] mt-1 leading-tight line-clamp-2 ${isBlocked ? 'text-red-400/80' : 'text-green-400/70'}`}>
             {reason}
           </div>
         )}
       </div>
 
-      {/* Stimulation badge (measured) — red only when the wind-down gate actually blocks it,
-          not whenever the index is high (high stim is fine, even desirable, at high energy) */}
-      {stimIdx !== null && (
-        <div
-          title="Stimulation Index (measured)"
-          className={`flex-shrink-0 px-1.5 py-1 rounded border font-dm-mono text-[10px] ${ranked?.breakdown.stimBlocked ? 'bg-red-400/10 border-red-400/30 text-red-400' : 'bg-white/5 border-white/10 text-white/45'}`}
-        >
-          ⚡{stimIdx.toFixed(2)}
-        </div>
-      )}
-
-      {/* Score badge */}
-      <div className={`flex-shrink-0 px-2 py-1 rounded border font-dm-mono text-xs font-medium ${scoreBg(score)} ${scoreColor(score)}`}>
-        {score.toFixed(2)}
-      </div>
-
-      {/* Movement badge */}
-      {ranked && ranked.movement !== 0 && (
-        <div className={`
-          flex-shrink-0 font-dm-mono text-[10px] font-bold px-1.5 py-0.5 rounded-full
-          ${ranked.movement > 0 ? 'bg-green-400/15 text-green-400' : 'bg-red-400/15 text-red-400'}
-        `}>
-          {ranked.movement > 0 ? `+${ranked.movement}` : ranked.movement}
-        </div>
-      )}
-
-      {/* Blocked overlay */}
-      {isBlocked && (
-        <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/40 border-l-2 border-red-500">
-          <span className="font-dm-mono text-xs text-red-400/80 bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">
-            {ranked?.breakdown.stimBlocked ? 'BLOCKED · HIGH STIM' : 'BLOCKED · MATURITY'}
+      {/* Right-side badges — stacked vertically so they stay narrow and never
+          overlap the title. A blocked item shows an inline BLOCKED pill (no overlay). */}
+      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+        {isBlocked ? (
+          <span className="rounded border border-red-400/30 bg-red-400/10 px-2 py-0.5 font-dm-mono text-[10px] font-semibold text-red-400">
+            BLOCKED
           </span>
-        </div>
-      )}
+        ) : (
+          <span className={`rounded border px-2 py-1 font-dm-mono text-xs font-medium ${scoreBg(score)} ${scoreColor(score)}`}>
+            {score.toFixed(2)}
+          </span>
+        )}
+
+        {stimIdx !== null && (
+          <span
+            title="Stimulation Index (estimated)"
+            className={`rounded border px-1.5 py-0.5 font-dm-mono text-[10px] ${ranked?.breakdown.stimBlocked ? 'bg-red-400/10 border-red-400/30 text-red-400' : 'bg-white/5 border-white/10 text-white/45'}`}
+          >
+            ⚡{stimIdx.toFixed(2)}
+          </span>
+        )}
+
+        {ranked && ranked.movement !== 0 && (
+          <span className={`rounded-full px-1.5 py-0.5 font-dm-mono text-[10px] font-bold ${ranked.movement > 0 ? 'bg-green-400/15 text-green-400' : 'bg-red-400/15 text-red-400'}`}>
+            {ranked.movement > 0 ? `+${ranked.movement}` : ranked.movement}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
