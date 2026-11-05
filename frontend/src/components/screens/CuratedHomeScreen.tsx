@@ -126,7 +126,7 @@ const CuratedHomeScreen: React.FC = () => {
 
   const handleSettingsClick = () => {
     if (isPinVerified) {
-      setCurrentStep(3);
+      setCurrentStep(4); // Settings = account profiles
     } else {
       setShowPinModal(true);
     }
@@ -135,7 +135,7 @@ const CuratedHomeScreen: React.FC = () => {
   const handlePinSuccess = () => {
     setIsPinVerified(true);
     setShowPinModal(false);
-    setCurrentStep(3);
+    setCurrentStep(4); // Settings = account profiles
   };
 
   return (
@@ -176,7 +176,7 @@ const CuratedHomeScreen: React.FC = () => {
             className="flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Parent Controls</span>
+            <span className="hidden sm:inline">Settings</span>
           </Button>
         </div>
       </div>
