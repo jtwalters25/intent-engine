@@ -14,6 +14,9 @@ const WizardContent: React.FC = () => {
 
   // Flow: Intent (0) → Browse (1) → Details (2) → Controls (3)
   const renderStep = () => {
+    // "Who's watching?" first — until a profile is chosen, show the picker.
+    if (!state.profileSelected) return <ProfilesScreen />;
+
     // Kid view: step 1 = Netflix-style browse, step 2 = detail page
     if (isKidView && state.currentStep === 1) return <KidBrowseScreen />;
     if (isKidView && state.currentStep === 2) return <ContentDetailScreen />;
