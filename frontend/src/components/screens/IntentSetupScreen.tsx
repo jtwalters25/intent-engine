@@ -357,10 +357,10 @@ const IntentSetupScreen: React.FC = () => {
           </Button>
           {!isPreferencesOpen && (
             <button
-              onClick={handlePreferencesClick}
+              onClick={() => setCurrentStep(4)}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
             >
-              Change settings
+              Switch profile &amp; settings
             </button>
           )}
         </div>

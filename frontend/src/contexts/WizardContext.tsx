@@ -59,6 +59,7 @@ export interface WizardState {
   selectedChild: ChildProfile | null;
   profiles: Profile[];
   activeProfileId: string;
+  profileSelected: boolean; // false until the first "Who's watching?" choice
   timeOfDay: TimeOfDay | null;
   energyLevel: number; // 0-100, where 0 is calm, 100 is high energy
   learningFocus: LearningFocus[];
@@ -111,6 +112,7 @@ const initialState: WizardState = {
   selectedChild: null,
   profiles: SAMPLE_PROFILES,
   activeProfileId: 'big-kid',
+  profileSelected: false,
   timeOfDay: null,
   energyLevel: 50,
   learningFocus: [],
@@ -135,11 +137,12 @@ export const WizardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   // then adjust them) and maps onto the legacy selectedChild for back-compat.
   const setActiveProfile = (id: string) => setState(prev => {
     const profile = prev.profiles.find(p => p.id === id);
-    if (!profile) return { ...prev, activeProfileId: id };
+    if (!profile) return { ...prev, activeProfileId: id, profileSelected: true };
     const d = profile.defaults;
     return {
       ...prev,
       activeProfileId: id,
+      profileSelected: true,
       selectedChild: { id: profile.id, name: profile.name, age: profile.ageMin, avatar: profile.avatar },
       energyLevel: d.energyLevel,
       ageRange: d.ageRange,

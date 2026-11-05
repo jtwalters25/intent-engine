@@ -61,18 +61,23 @@ const ProfileCard: React.FC<{ profile: Profile; active: boolean; onSelect: () =>
 const ProfilesScreen: React.FC = () => {
   const { state, setActiveProfile, setCurrentStep } = useWizard();
 
+  const firstRun = !state.profileSelected;
+
   const choose = (id: string) => {
     setActiveProfile(id); // loads this profile's age-based default preferences
-    setCurrentStep(3); // open the controls so the parent can adjust those defaults
+    // First run: go set the moment's intent. Mid-session: open the controls to adjust.
+    setCurrentStep(firstRun ? 0 : 3);
   };
 
   return (
     <div className="min-h-screen animate-fade-in py-6">
       <div className="mx-auto max-w-3xl px-4 sm:px-8">
         <div className="mb-8 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setCurrentStep(1)} aria-label="Back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          {!firstRun && (
+            <Button variant="ghost" size="icon" onClick={() => setCurrentStep(1)} aria-label="Back">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div>
             <h1 className="text-xl font-bold text-foreground sm:text-2xl">Who's watching?</h1>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
