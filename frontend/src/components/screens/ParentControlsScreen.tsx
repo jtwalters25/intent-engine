@@ -17,6 +17,8 @@ const ParentControlsScreen: React.FC = () => {
     setCurrentStep,
   } = useWizard();
 
+  const activeProfile = state.profiles.find((p) => p.id === state.activeProfileId);
+
   const handleBackToBrowse = () => {
     setCurrentStep(1); // Back to curated home
   };
@@ -45,6 +47,25 @@ const ParentControlsScreen: React.FC = () => {
             <p className="text-muted-foreground">Fine-tune the viewing experience</p>
           </div>
         </div>
+
+        {/* Active-profile context: these preferences started from age-based defaults. */}
+        {activeProfile && (
+          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3">
+            <span className="text-2xl" aria-hidden>{activeProfile.avatar}</span>
+            <span className="font-medium text-foreground">{activeProfile.name}</span>
+            <span className="text-sm text-muted-foreground">
+              {activeProfile.kind === 'adult' ? 'ages 18+' : `ages ${activeProfile.ageMin}–${activeProfile.ageMax}`}
+            </span>
+            {activeProfile.stimCap !== null && (
+              <span className="ml-auto rounded-full border border-trust/30 bg-trust/10 px-2 py-0.5 text-[11px] font-medium text-trust">
+                Stimulation cap {activeProfile.stimCap.toFixed(2)} (locked)
+              </span>
+            )}
+            <span className="w-full text-xs text-muted-foreground">
+              Loaded age-based defaults for this profile. Adjust anything below.
+            </span>
+          </div>
+        )}
 
         {/* Quick Toggles Section */}
         <div className="bg-card rounded-2xl p-6 mb-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>

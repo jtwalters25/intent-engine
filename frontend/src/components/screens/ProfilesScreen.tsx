@@ -62,8 +62,8 @@ const ProfilesScreen: React.FC = () => {
   const { state, setActiveProfile, setCurrentStep } = useWizard();
 
   const choose = (id: string) => {
-    setActiveProfile(id);
-    setCurrentStep(1); // back to the curated home for the chosen profile
+    setActiveProfile(id); // loads this profile's age-based default preferences
+    setCurrentStep(3); // open the controls so the parent can adjust those defaults
   };
 
   return (
@@ -94,8 +94,9 @@ const ProfilesScreen: React.FC = () => {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          A profile's maturity gate and stimulation cap are parent-set policy (hard).
-          Session preferences adjust intent within that policy; they can't loosen it.
+          Selecting a profile loads age-based default preferences you can adjust next.
+          Its maturity gate and stimulation cap stay as parent-set policy (hard) that
+          session tweaks can't loosen.
         </p>
       </div>
     </div>

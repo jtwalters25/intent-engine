@@ -13,6 +13,17 @@ export interface ChildProfile {
 // Account-level profile. Unlike session preferences (soft, transient), a profile
 // carries HARD parent-set policy: the maturity gate and the over-stimulation cap.
 // Age range drives the stim cap — a toddler's ceiling is lower than a big kid's.
+// Age-based preference defaults a profile loads when selected. These are a
+// starting point the parent then adjusts; they are not hard policy.
+export interface ProfileDefaults {
+  energyLevel: number;          // 0-100
+  ageRange: string;             // "min-max" consumed by the home age filter
+  prioritizeEducational: boolean;
+  lowerStimulation: boolean;
+  viewingTimeLimit: number;     // one of 30/45/60/90
+  endOnCalmNote: boolean;
+}
+
 export interface Profile {
   id: string;
   name: string;
@@ -20,14 +31,27 @@ export interface Profile {
   ageMin: number;
   ageMax: number | null; // null = open-ended (adult)
   avatar: string;
-  maturityGate: boolean;  // kid → block adult-maturity content (hard)
-  stimCap: number | null; // over-stimulation ceiling 0-1 (hard); null = none
+  maturityGate: boolean;  // kid: block adult-maturity content (hard policy)
+  stimCap: number | null; // over-stimulation ceiling 0-1 (hard policy); null = none
+  defaults: ProfileDefaults; // age-based starting preferences (adjustable)
 }
 
 export const SAMPLE_PROFILES: Profile[] = [
-  { id: 'parent', name: 'Parent', kind: 'adult', ageMin: 18, ageMax: null, avatar: '🧑', maturityGate: false, stimCap: null },
-  { id: 'toddler', name: 'Toddler', kind: 'kid', ageMin: 2, ageMax: 4, avatar: '🧸', maturityGate: true, stimCap: 0.3 },
-  { id: 'big-kid', name: 'Big Kid', kind: 'kid', ageMin: 5, ageMax: 9, avatar: '🚀', maturityGate: true, stimCap: 0.5 },
+  {
+    id: 'parent', name: 'Parent', kind: 'adult', ageMin: 18, ageMax: null, avatar: '🧑',
+    maturityGate: false, stimCap: null,
+    defaults: { energyLevel: 60, ageRange: '18-99', prioritizeEducational: false, lowerStimulation: false, viewingTimeLimit: 90, endOnCalmNote: false },
+  },
+  {
+    id: 'toddler', name: 'Toddler', kind: 'kid', ageMin: 2, ageMax: 4, avatar: '🧸',
+    maturityGate: true, stimCap: 0.3,
+    defaults: { energyLevel: 20, ageRange: '2-4', prioritizeEducational: true, lowerStimulation: true, viewingTimeLimit: 30, endOnCalmNote: true },
+  },
+  {
+    id: 'big-kid', name: 'Big Kid', kind: 'kid', ageMin: 5, ageMax: 9, avatar: '🚀',
+    maturityGate: true, stimCap: 0.5,
+    defaults: { energyLevel: 50, ageRange: '5-9', prioritizeEducational: true, lowerStimulation: false, viewingTimeLimit: 45, endOnCalmNote: true },
+  },
 ];
 
 export interface WizardState {
@@ -107,13 +131,23 @@ export const WizardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const setCurrentStep = (step: number) => setState(prev => ({ ...prev, currentStep: step }));
   const setSelectedChild = (child: ChildProfile | null) => setState(prev => ({ ...prev, selectedChild: child }));
 
-  // Selecting a profile also maps onto the legacy selectedChild for back-compat.
+  // Selecting a profile loads its age-based default preferences (the parent can
+  // then adjust them) and maps onto the legacy selectedChild for back-compat.
   const setActiveProfile = (id: string) => setState(prev => {
     const profile = prev.profiles.find(p => p.id === id);
-    const selectedChild: ChildProfile | null = profile
-      ? { id: profile.id, name: profile.name, age: profile.ageMin, avatar: profile.avatar }
-      : prev.selectedChild;
-    return { ...prev, activeProfileId: id, selectedChild };
+    if (!profile) return { ...prev, activeProfileId: id };
+    const d = profile.defaults;
+    return {
+      ...prev,
+      activeProfileId: id,
+      selectedChild: { id: profile.id, name: profile.name, age: profile.ageMin, avatar: profile.avatar },
+      energyLevel: d.energyLevel,
+      ageRange: d.ageRange,
+      prioritizeEducational: d.prioritizeEducational,
+      lowerStimulation: d.lowerStimulation,
+      viewingTimeLimit: d.viewingTimeLimit,
+      endOnCalmNote: d.endOnCalmNote,
+    };
   });
   const setTimeOfDay = (time: TimeOfDay | null) => setState(prev => ({ ...prev, timeOfDay: time }));
   const setEnergyLevel = (level: number) => setState(prev => ({ ...prev, energyLevel: level }));
