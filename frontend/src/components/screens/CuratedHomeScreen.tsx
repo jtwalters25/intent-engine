@@ -16,6 +16,8 @@ const CuratedHomeScreen: React.FC = () => {
   const [isPinVerified, setIsPinVerified] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
 
+  const activeProfile = state.profiles.find((p) => p.id === state.activeProfileId);
+
   const organizedContent = useMemo(() => {
     const { timeOfDay, energyLevel, learningFocus, ageRange } = state;
 
@@ -154,15 +156,29 @@ const CuratedHomeScreen: React.FC = () => {
             </div>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSettingsClick}
-          className="flex items-center gap-2"
-        >
-          <Settings className="w-4 h-4" />
-          <span className="hidden sm:inline">Parent Controls</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Profile switcher → account Settings (who's watching), distinct from
+              "Adjust Preferences" (session intent). */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCurrentStep(4)}
+            className="flex items-center gap-2"
+            title="Switch profile / Settings"
+          >
+            <span className="text-lg" aria-hidden>{activeProfile?.avatar ?? '👤'}</span>
+            <span className="hidden sm:inline">{activeProfile?.name ?? 'Profile'}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSettingsClick}
+            className="flex items-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Parent Controls</span>
+          </Button>
+        </div>
       </div>
 
       {/* Content Rows */}

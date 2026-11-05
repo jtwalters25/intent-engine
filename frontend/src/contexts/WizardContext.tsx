@@ -10,9 +10,31 @@ export interface ChildProfile {
   avatar: string;
 }
 
+// Account-level profile. Unlike session preferences (soft, transient), a profile
+// carries HARD parent-set policy: the maturity gate and the over-stimulation cap.
+// Age range drives the stim cap — a toddler's ceiling is lower than a big kid's.
+export interface Profile {
+  id: string;
+  name: string;
+  kind: 'adult' | 'kid';
+  ageMin: number;
+  ageMax: number | null; // null = open-ended (adult)
+  avatar: string;
+  maturityGate: boolean;  // kid → block adult-maturity content (hard)
+  stimCap: number | null; // over-stimulation ceiling 0-1 (hard); null = none
+}
+
+export const SAMPLE_PROFILES: Profile[] = [
+  { id: 'parent', name: 'Parent', kind: 'adult', ageMin: 18, ageMax: null, avatar: '🧑', maturityGate: false, stimCap: null },
+  { id: 'toddler', name: 'Toddler', kind: 'kid', ageMin: 2, ageMax: 4, avatar: '🧸', maturityGate: true, stimCap: 0.3 },
+  { id: 'big-kid', name: 'Big Kid', kind: 'kid', ageMin: 5, ageMax: 9, avatar: '🚀', maturityGate: true, stimCap: 0.5 },
+];
+
 export interface WizardState {
   currentStep: number;
   selectedChild: ChildProfile | null;
+  profiles: Profile[];
+  activeProfileId: string;
   timeOfDay: TimeOfDay | null;
   energyLevel: number; // 0-100, where 0 is calm, 100 is high energy
   learningFocus: LearningFocus[];
@@ -44,6 +66,7 @@ interface WizardContextType {
   state: WizardState;
   setCurrentStep: (step: number) => void;
   setSelectedChild: (child: ChildProfile | null) => void;
+  setActiveProfile: (id: string) => void;
   setTimeOfDay: (time: TimeOfDay | null) => void;
   setEnergyLevel: (level: number) => void;
   toggleLearningFocus: (focus: LearningFocus) => void;
@@ -62,6 +85,8 @@ interface WizardContextType {
 const initialState: WizardState = {
   currentStep: 0,
   selectedChild: null,
+  profiles: SAMPLE_PROFILES,
+  activeProfileId: 'big-kid',
   timeOfDay: null,
   energyLevel: 50,
   learningFocus: [],
@@ -81,6 +106,15 @@ export const WizardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const setCurrentStep = (step: number) => setState(prev => ({ ...prev, currentStep: step }));
   const setSelectedChild = (child: ChildProfile | null) => setState(prev => ({ ...prev, selectedChild: child }));
+
+  // Selecting a profile also maps onto the legacy selectedChild for back-compat.
+  const setActiveProfile = (id: string) => setState(prev => {
+    const profile = prev.profiles.find(p => p.id === id);
+    const selectedChild: ChildProfile | null = profile
+      ? { id: profile.id, name: profile.name, age: profile.ageMin, avatar: profile.avatar }
+      : prev.selectedChild;
+    return { ...prev, activeProfileId: id, selectedChild };
+  });
   const setTimeOfDay = (time: TimeOfDay | null) => setState(prev => ({ ...prev, timeOfDay: time }));
   const setEnergyLevel = (level: number) => setState(prev => ({ ...prev, energyLevel: level }));
   
@@ -111,6 +145,7 @@ export const WizardProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         state,
         setCurrentStep,
         setSelectedChild,
+        setActiveProfile,
         setTimeOfDay,
         setEnergyLevel,
         toggleLearningFocus,

@@ -5,6 +5,7 @@ import CuratedHomeScreen from '@/components/screens/CuratedHomeScreen';
 import ContentDetailScreen from '@/components/screens/ContentDetailScreen';
 import ParentControlsScreen from '@/components/screens/ParentControlsScreen';
 import KidBrowseScreen from '@/components/screens/KidBrowseScreen';
+import ProfilesScreen from '@/components/screens/ProfilesScreen';
 import { Eye, EyeOff } from 'lucide-react';
 
 const WizardContent: React.FC = () => {
@@ -26,6 +27,8 @@ const WizardContent: React.FC = () => {
         return <ContentDetailScreen />;
       case 3:
         return <ParentControlsScreen />;
+      case 4:
+        return <ProfilesScreen />;
       default:
         return <IntentSetupScreen />;
     }
