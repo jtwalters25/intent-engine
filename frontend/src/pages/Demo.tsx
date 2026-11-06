@@ -10,7 +10,6 @@ import {
 import SignalSliders from '@/components/demo/SignalSliders';
 import ScoringFormula from '@/components/demo/ScoringFormula';
 import ProphecyAgent from '@/components/demo/ProphecyAgent';
-import AgenticMode from '@/components/demo/AgenticMode';
 import PosterGrid, { type OrderView } from '@/components/demo/film/PosterGrid';
 import FocusPanel from '@/components/demo/film/FocusPanel';
 
@@ -21,7 +20,6 @@ function splitSubtitle(subtitle: string): { when: string; what: string } {
 }
 
 export default function Demo() {
-  const [mode, setMode] = useState<'signals' | 'agentic'>('signals');
   const [calm, setCalm] = useState<boolean>(() => {
     try { return localStorage.getItem('demo-calm') === '1'; } catch { return false; }
   });
@@ -127,18 +125,13 @@ export default function Demo() {
             <h1 className="film-wordmark">Intent Engine</h1>
             <p className="film-tagline">Same catalog. Different moment. Different order.</p>
           </div>
-          <div className="film-header-actions" aria-label="Demo mode">
-            <div className="film-segment" role="group" aria-label="Mode">
-              <button type="button" aria-pressed={mode === 'signals'} onClick={() => setMode('signals')}>Signal Mode</button>
-              <button type="button" aria-pressed={mode === 'agentic'} onClick={() => setMode('agentic')}>Agentic Mode</button>
-            </div>
+          <div className="film-header-actions">
             <button type="button" aria-pressed={calm} onClick={toggleCalm} title="Warm, low-stimulation palette" className="film-chip-btn">
               {calm ? 'Calm: on' : 'Calm: off'}
             </button>
           </div>
         </header>
 
-        {mode === 'agentic' ? <AgenticMode /> : <>
         {/* Platforms */}
         <nav className="film-platforms" aria-label="Platform">
           {platformKeys.map((key) => (
@@ -205,7 +198,6 @@ export default function Demo() {
             </div>
           </aside>
         </div>
-        </>}
 
         <footer className="film-footer">
           Deterministic ranking. Every result explained. Stimulation values are estimated in this demo.
