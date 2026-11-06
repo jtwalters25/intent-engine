@@ -1,0 +1,224 @@
+<title>Intent Engine Bedtime Film</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one 4:5 film stage (1080x1350 logical px) scaled to fit, quiet controls beneath.
+   Single dark look on purpose: it is a film frame, so it reads the same on any host theme. */
+:root {
+  color-scheme: dark;
+  --ink: #050506;          /* stage black */
+  --page: #0c0c0e;         /* page around the stage */
+  --fg: #f5f5f7;           /* primary type */
+  --muted: #8e8e96;        /* secondary type */
+  --hairline: #26262b;
+  --calm: #5fd38d;         /* the one accent: calm, chosen */
+  --alarm: #ff6159;        /* semantic: over the bedtime cap */
+  --display: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --spring: cubic-bezier(.32, 1.22, .5, 1);
+  --ease: cubic-bezier(.22, .8, .2, 1);
+}
+html, body { background: var(--page); color: var(--fg); }
+body {
+  font-family: var(--display);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 40px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+}
+.frame { width: min(100%, 540px); aspect-ratio: 4 / 5; position: relative; border-radius: 18px; overflow: hidden; background: var(--ink); box-shadow: 0 0 0 1px var(--hairline); max-width: 100%; }
+.controls { width: min(100%, 540px); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.controls p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; min-width: 0; flex: 1 1 220px; }
+button { font: 500 14px var(--display); color: var(--ink); background: var(--fg); border: 0; border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--calm); outline-offset: 3px; }
+
+/* ---------- stage (logical 1080 x 1350) ---------- */
+#stage { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; transform-origin: 0 0; overflow: hidden; background: var(--ink); }
+.fade { opacity: 0; transition: opacity 900ms var(--ease), transform 900ms var(--ease), filter 900ms var(--ease); }
+.fade.on { opacity: 1; }
+
+/* opening type */
+#clock { position: absolute; left: 0; right: 0; top: 520px; text-align: center; font-weight: 600; font-size: 168px; letter-spacing: -0.045em; filter: blur(14px); transform: translateY(18px); }
+#clock.on { filter: blur(0); transform: none; }
+#moment { position: absolute; left: 0; right: 0; top: 730px; text-align: center; font-weight: 500; font-size: 64px; letter-spacing: -0.02em; color: var(--muted); transform: translateY(14px); }
+#moment.on { transform: none; }
+#stage.docked #clock { top: 74px; font-size: 56px; letter-spacing: -0.03em; transition: all 1100ms var(--ease); text-align: left; left: 54px; }
+#stage.docked #moment { top: 92px; font-size: 32px; transition: all 1100ms var(--ease); text-align: right; right: 54px; left: auto; }
+#stage.focus #clock, #stage.focus #moment, #stage.focus #label { opacity: 0; }
+
+#label { position: absolute; left: 54px; top: 1112px; font: 500 30px var(--mono); color: var(--muted); letter-spacing: 0.01em; }
+#label b { color: var(--fg); font-weight: 500; }
+
+/* ---------- world (camera moves this) ---------- */
+#world { position: absolute; inset: 0; transform-origin: 0 0; transition: transform 1500ms cubic-bezier(.45, 0, .15, 1), opacity 900ms var(--ease); }
+.tile { position: absolute; left: 0; top: 0; width: 300px; height: 375px; transition: transform 1000ms var(--spring); will-change: transform; }
+.poster { position: absolute; inset: 0; border-radius: 26px; overflow: hidden; background: var(--tone); transition: filter 900ms var(--ease), opacity 900ms var(--ease), transform 900ms var(--spring), box-shadow 700ms var(--ease); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+.poster::before { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 80% at 20% 10%, rgba(255,255,255,.22), transparent 55%), linear-gradient(180deg, transparent 45%, rgba(0,0,0,.62)); }
+.rank { position: absolute; left: 24px; top: 16px; font-weight: 600; font-size: 54px; letter-spacing: -0.04em; color: rgba(255,255,255,.92); }
+.meta { position: absolute; left: 24px; right: 24px; bottom: 22px; }
+.meta h3 { margin: 0 0 6px; font-weight: 600; font-size: 31px; line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; }
+.meta p { margin: 0; font: 400 21px var(--mono); color: rgba(255,255,255,.72); }
+.held-pill { position: absolute; right: 18px; top: 22px; font: 500 18px var(--mono); padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.55); color: var(--fg); opacity: 0; transition: opacity 600ms var(--ease) 500ms; }
+.tile.held .poster { filter: grayscale(1) brightness(.42); transform: scale(.9); box-shadow: none; }
+.tile.held .held-pill { opacity: 1; }
+.tile.lit .poster { filter: none; transform: scale(1); }
+#stage.focus .tile:not(.lit):not(.chosen) .poster { opacity: .07; }
+.tile.chosen .poster { box-shadow: 0 0 0 4px var(--calm), 0 24px 70px rgba(95,211,141,.28); }
+
+/* ---------- overlays (not scaled by camera) ---------- */
+#caption { position: absolute; left: 54px; right: 54px; top: 56px; text-align: center; font-weight: 600; font-size: 54px; letter-spacing: -0.03em; line-height: 1.1; text-wrap: balance; transform: translateY(10px); }
+#caption.on { transform: none; }
+#caption span { display: block; color: var(--muted); font-weight: 500; }
+
+#meters { position: absolute; left: 54px; right: 54px; top: 980px; display: grid; gap: 26px; transform: translateY(16px); }
+#meters.on { transform: none; }
+.meter { display: grid; grid-template-columns: 220px 1fr 230px; align-items: center; gap: 24px; font: 500 28px var(--mono); }
+.meter .name { color: var(--muted); }
+.meter .val { text-align: right; font-variant-numeric: tabular-nums; }
+.track { height: 10px; border-radius: 99px; background: var(--hairline); overflow: hidden; }
+.fill { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--fg); transition: width 1400ms var(--ease), background-color 600ms var(--ease); }
+#meters.over .fill { background: var(--alarm); }
+#meters.over .val { color: var(--alarm); transition: color 600ms var(--ease); }
+
+#reason { position: absolute; left: 54px; right: 54px; top: 930px; text-align: center; transform: translateY(14px); }
+#reason.on { transform: none; }
+#reason h2 { margin: 0 0 18px; font-weight: 600; font-size: 64px; letter-spacing: -0.035em; }
+#reason p { margin: 0; font: 500 28px var(--mono); color: var(--calm); }
+
+#end { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; text-align: center; padding: 0 70px; }
+#end h1 { margin: 0; font-weight: 700; font-size: 112px; letter-spacing: -0.05em; }
+#end .line { font-size: 38px; color: var(--muted); letter-spacing: -0.015em; text-wrap: balance; }
+#end .url { font: 500 36px var(--mono); color: var(--calm); }
+#end .note { position: absolute; bottom: 60px; left: 70px; right: 70px; font: 400 21px var(--mono); color: #5d5d64; }
+
+/* #record: bare 1080x1350 stage for rendering to video */
+body.record { padding: 0; gap: 0; }
+body.record .controls { display: none; }
+body.record .frame { width: 1080px; border-radius: 0; box-shadow: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade, .tile, .poster, #world, .fill { transition-duration: 1ms !important; }
+}
+</style>
+
+<div class="frame" id="frame" role="img" aria-label="Concept animation. At 8:45 PM bedtime, a row of titles ranked by engagement re-ranks for bedtime. A thriller and two intense titles are held back, including a TV-Y show whose pacing, loudness, and motion are over the bedtime cap. Bluey S4 rises to first with the reason calm, short, familiar.">
+  <div id="stage">
+    <div id="world"></div>
+    <div id="clock" class="fade">8:45 PM</div>
+    <div id="moment" class="fade">Bedtime</div>
+    <div id="label" class="fade"></div>
+    <div id="caption" class="fade"></div>
+    <div id="meters" class="fade">
+      <div class="meter"><span class="name">Pacing</span><span class="track"><span class="fill" data-to="73"></span></span><span class="val">22 cuts/min</span></div>
+      <div class="meter"><span class="name">Loudness</span><span class="track"><span class="fill" data-to="84"></span></span><span class="val">−13 LUFS</span></div>
+      <div class="meter"><span class="name">Motion</span><span class="track"><span class="fill" data-to="92"></span></span><span class="val">0.92</span></div>
+    </div>
+    <div id="reason" class="fade"><h2>Calm. Short. Familiar.</h2><p>4 cuts/min · −23 LUFS · 7 min</p></div>
+    <div id="end" class="fade">
+      <h1>Intent Engine</h1>
+      <div class="line">Recommendations for the moment you’re in.</div>
+      <div class="url">intentengine.vercel.app/demo</div>
+      <div class="note">Concept animation. Titles and values from the live demo. Stimulation values are estimated.</div>
+    </div>
+  </div>
+</div>
+<div class="controls">
+  <p>Concept animation, about 15 seconds. It loops.</p>
+  <button id="replay" type="button">Replay</button>
+</div>
+
+<script>
+// Titles, engagement scores, and stimulation data mirror the live /demo (Streaming, Bedtime).
+const TITLES = [
+  { id: 'dark',    name: 'Dark Season 3',       meta: 'TV-MA · 52 min', tone: 'linear-gradient(160deg,#1d3b44,#0b1417)', held: 'TV-MA' },
+  { id: 'sensory', name: 'Sensory Rush Rhymes', meta: 'TV-Y · 8 min',   tone: 'linear-gradient(160deg,#ff5e8a,#ff9a3c 55%,#ffd23f)', held: 'High stim' },
+  { id: 'incep',   name: 'Inception',           meta: 'PG-13 · 148 min',tone: 'linear-gradient(160deg,#3e5a7e,#141c29)', held: 'High stim' },
+  { id: 'lion',    name: 'The Lion King',       meta: 'G · 88 min',     tone: 'linear-gradient(160deg,#e3a24a,#7a3f12)' },
+  { id: 'earth',   name: 'Planet Earth III',    meta: 'TV-G · 52 min',  tone: 'linear-gradient(160deg,#4f9e8a,#173b3a)' },
+  { id: 'bluey',   name: 'Bluey S4',            meta: 'TV-Y · 7 min',   tone: 'linear-gradient(160deg,#9cc9f5,#4a7fc4)' },
+];
+const ENGAGEMENT = ['dark', 'sensory', 'incep', 'lion', 'earth', 'bluey'];   // 0.94 … 0.58
+const BEDTIME    = ['bluey', 'earth', 'lion', 'dark', 'sensory', 'incep'];   // last three held back
+
+const stage = document.getElementById('stage');
+const world = document.getElementById('world');
+const $ = (id) => document.getElementById(id);
+const tiles = {};
+
+for (const t of TITLES) {
+  const el = document.createElement('div');
+  el.className = 'tile';
+  el.innerHTML = `<div class="poster" style="--tone:${t.tone}"><span class="rank"></span>${t.held ? `<span class="held-pill">${t.held}</span>` : ''}<div class="meta"><h3>${t.name}</h3><p>${t.meta}</p></div></div>`;
+  world.appendChild(el);
+  tiles[t.id] = el;
+}
+
+const slot = (i) => ({ x: 54 + (i % 3) * 336, y: 236 + Math.floor(i / 3) * 411 });
+function layout(order, stagger) {
+  order.forEach((id, i) => {
+    const { x, y } = slot(i), el = tiles[id];
+    el.style.transitionDelay = stagger ? `${i * 70}ms` : '0ms';
+    el.style.transform = `translate(${x}px, ${y}px)`;
+    el.querySelector('.rank').textContent = i + 1;
+  });
+}
+function camera(id, scale, cy) {
+  if (!id) { world.style.transform = ''; return; }
+  const i = BEDTIME.indexOf(id), { x, y } = slot(i);
+  const tx = x + 150, ty = y + 187.5;
+  world.style.transform = `translate(${540 - tx * scale}px, ${cy - ty * scale}px) scale(${scale})`;
+}
+const on = (id, v = true) => $(id).classList.toggle('on', v);
+
+// Fit the 1080x1350 stage into its frame
+const frame = $('frame');
+const fit = () => { stage.style.transform = `scale(${frame.clientWidth / 1080})`; };
+new ResizeObserver(fit).observe(frame);
+
+if (location.hash === '#record') document.body.classList.add('record');
+
+let run = 0;
+function reset() {
+  stage.classList.remove('docked', 'focus');
+  ['clock', 'moment', 'label', 'caption', 'meters', 'reason', 'end'].forEach((id) => on(id, false));
+  $('meters').classList.remove('over');
+  document.querySelectorAll('.fill').forEach((f) => (f.style.width = '0'));
+  Object.values(tiles).forEach((t) => t.classList.remove('held', 'lit', 'chosen'));
+  world.style.transition = 'none'; camera(null); world.style.opacity = '0';
+  layout(ENGAGEMENT, false);
+  void world.offsetWidth; world.style.transition = '';
+}
+
+async function play() {
+  const me = ++run, t0 = performance.now();
+  const at = (ms) => new Promise((res, rej) => {
+    const wait = Math.max(0, t0 + ms - performance.now());
+    setTimeout(() => (me === run ? res() : rej()), wait);
+  });
+  reset();
+  try {
+    await at(300);   on('clock');
+    await at(1300);  on('moment');
+    await at(2600);  stage.classList.add('docked'); world.style.opacity = '1';
+                     $('label').innerHTML = 'Ranked by <b>engagement</b>'; on('label');
+    await at(4400);  on('label', false);
+    await at(4700);  layout(BEDTIME, true);
+                     ['dark', 'sensory', 'incep'].forEach((id) => tiles[id].classList.add('held'));
+                     $('label').innerHTML = 'Ranked for <b>bedtime</b>'; on('label');
+    await at(6900);  stage.classList.add('focus'); camera('sensory', 1.75, 560); tiles.sensory.classList.add('lit');
+                     $('caption').innerHTML = 'Rated TV-Y.<span>Too intense for tonight.</span>'; on('caption');
+    await at(7700);  on('meters'); document.querySelectorAll('.fill').forEach((f) => (f.style.width = f.dataset.to + '%'));
+    await at(9100);  $('meters').classList.add('over');
+    await at(10400); on('meters', false); on('caption', false); tiles.sensory.classList.remove('lit');
+                     camera('bluey', 1.55, 520); tiles.bluey.classList.add('chosen');
+    await at(11000); on('reason');
+    await at(13000); on('reason', false); world.style.opacity = '0';
+    await at(13500); on('end');
+    await at(17500); play();
+  } catch { /* superseded by a newer run */ }
+}
+$('replay').addEventListener('click', play);
+fit(); play();
+</script>
