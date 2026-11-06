@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   platforms,
   platformKeys,
@@ -6,15 +6,19 @@ import {
   type PlatformKey,
   type SignalKey,
   type SignalValues,
-  type RankedPlatformItem,
 } from '@/data/demoPlatforms';
-import ContentCard from '@/components/demo/ContentCard';
-import ContextSwitcher from '@/components/demo/ContextSwitcher';
-import PlatformTabs from '@/components/demo/PlatformTabs';
 import SignalSliders from '@/components/demo/SignalSliders';
 import ScoringFormula from '@/components/demo/ScoringFormula';
 import ProphecyAgent from '@/components/demo/ProphecyAgent';
 import AgenticMode from '@/components/demo/AgenticMode';
+import PosterGrid, { type OrderView } from '@/components/demo/film/PosterGrid';
+import FocusPanel from '@/components/demo/film/FocusPanel';
+
+/** Context subtitles read "8:45 PM — winding down for sleep"; split into the time and the description. */
+function splitSubtitle(subtitle: string): { when: string; what: string } {
+  const i = subtitle.indexOf(' — ');
+  return i === -1 ? { when: '', what: subtitle } : { when: subtitle.slice(0, i), what: subtitle.slice(i + 3) };
+}
 
 export default function Demo() {
   const [mode, setMode] = useState<'signals' | 'agentic'>('signals');
@@ -37,7 +41,9 @@ export default function Demo() {
     food_delivery: 'sunday-comfort',
   });
   const [signalOverrides, setSignalOverrides] = useState<Partial<SignalValues>>({});
-  const [hoveredItem, setHoveredItem] = useState<RankedPlatformItem | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<OrderView>('moment');
+  const [whyOpen, setWhyOpen] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
 
   const platform = platforms[activePlatform];
@@ -55,29 +61,51 @@ export default function Demo() {
     [platform.catalog, signals],
   );
 
-  // Focus item for ScoringFormula: hovered item or #1 ranked
-  const focusItem = hoveredItem ?? rankedItems[0] ?? null;
+  // Engagement view: the catalog's own order, same ranked objects so details stay available
+  const displayItems = useMemo(() => {
+    if (view === 'moment') return rankedItems;
+    const byId = new Map(rankedItems.map((r) => [r.id, r]));
+    return platform.catalog.map((c) => byId.get(c.id)!);
+  }, [view, rankedItems, platform.catalog]);
+
+  // Focus: the selected tile, else the #1 pick for this moment
+  const focusItem = rankedItems.find((r) => r.id === selectedId) ?? rankedItems[0] ?? null;
+  const focusRank = focusItem ? rankedItems.indexOf(focusItem) + 1 : 0;
+
+  // On one-column layouts the focus panel sits below the grid; bring it into view on select
+  const sideRef = useRef<HTMLElement>(null);
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId((cur) => (cur === id ? null : id));
+    const el = sideRef.current;
+    if (el && window.matchMedia('(max-width: 1023px)').matches) {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      requestAnimationFrame(() => el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }));
+    }
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedId(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handlePlatformSwitch = useCallback((key: PlatformKey) => {
     if (key === activePlatform) return;
     setTransitioning(true);
     setSignalOverrides({});
-    setHoveredItem(null);
+    setSelectedId(null);
     setTimeout(() => {
       setActivePlatform(key);
       setTransitioning(false);
     }, 150);
   }, [activePlatform]);
 
+  // No fade on context change: the tiles slide into their new order instead
   const handleContextSwitch = useCallback((key: string) => {
     if (key === activeContext) return;
-    setTransitioning(true);
     setSignalOverrides({});
-    setHoveredItem(null);
-    setTimeout(() => {
-      setActiveContextMap((prev) => ({ ...prev, [activePlatform]: key }));
-      setTransitioning(false);
-    }, 150);
+    setView('moment');
+    setActiveContextMap((prev) => ({ ...prev, [activePlatform]: key }));
   }, [activeContext, activePlatform]);
 
   const handleSignalChange = useCallback((key: SignalKey, value: number) => {
@@ -88,134 +116,99 @@ export default function Demo() {
     setSignalOverrides({});
   }, []);
 
-  const handleHover = useCallback((item: RankedPlatformItem | null) => {
-    setHoveredItem(item);
-  }, []);
-
-  const streamingInsights: Record<string, string> = {
-    'bedtime': 'Dark S3 blocked (maturity). Sensory Rush Rhymes blocked (high stimulation, estimated). Calm picks like Bluey rise.',
-    'solo-morning': 'Adult content unlocked. Kids content drops. Complex titles rise.',
-    'family-weekend': 'Everything available. Family content surfaces. Energy drives ranking.',
-    'focus-session': 'Short-form and background-friendly content rises. Long/complex drops.',
-  };
+  const { when, what } = splitSubtitle(activeCtx.subtitle);
 
   return (
-    <div className={`demo-root min-h-screen bg-[var(--demo-bg)] text-white transition-colors duration-500 ${calm ? 'demo-calm' : ''}`}>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className={`demo-root film min-h-screen bg-[var(--demo-bg)] text-white transition-colors duration-500 ${calm ? 'demo-calm' : ''}`}>
+      <div className="film-wrap">
         {/* Header */}
-        <header className="mb-6">
-          <h1 className="font-syne text-3xl sm:text-4xl font-extrabold tracking-tight text-white/95">
-            Intent Engine
-          </h1>
-          <p className="font-dm-mono text-sm text-white/40 mt-1">
-            Context-aware re-ranking — same catalog, different intent, different order
-          </p>
+        <header className="film-header">
+          <div className="min-w-0">
+            <h1 className="film-wordmark">Intent Engine</h1>
+            <p className="film-tagline">Same catalog. Different moment. Different order.</p>
+          </div>
+          <div className="film-header-actions" aria-label="Demo mode">
+            <div className="film-segment" role="group" aria-label="Mode">
+              <button type="button" aria-pressed={mode === 'signals'} onClick={() => setMode('signals')}>Signal Mode</button>
+              <button type="button" aria-pressed={mode === 'agentic'} onClick={() => setMode('agentic')}>Agentic Mode</button>
+            </div>
+            <button type="button" aria-pressed={calm} onClick={toggleCalm} title="Warm, low-stimulation palette" className="film-chip-btn">
+              {calm ? 'Calm: on' : 'Calm: off'}
+            </button>
+          </div>
         </header>
 
-        <div className="mb-6 flex flex-wrap items-center gap-2" aria-label="Demo mode">
-          <button type="button" aria-pressed={mode === 'signals'} onClick={() => setMode('signals')} className="rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">Signal Mode</button>
-          <button type="button" aria-pressed={mode === 'agentic'} onClick={() => setMode('agentic')} className="rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">Agentic Mode</button>
-          <button type="button" aria-pressed={calm} onClick={toggleCalm} title="Warm, low-stimulation palette" className="ml-auto rounded border border-white/20 px-4 py-2 aria-pressed:bg-white/10">
-            {calm ? '🌙 Calm: on' : '🌙 Calm: off'}
-          </button>
-        </div>
-
         {mode === 'agentic' ? <AgenticMode /> : <>
-        {/* Platform Tabs */}
-        <section className="mb-6">
-          <PlatformTabs active={activePlatform} onSelect={handlePlatformSwitch} />
-        </section>
+        {/* Platforms */}
+        <nav className="film-platforms" aria-label="Platform">
+          {platformKeys.map((key) => (
+            <button key={key} type="button" aria-pressed={key === activePlatform} onClick={() => handlePlatformSwitch(key)}>
+              {platforms[key].label}
+              {key === 'streaming' && <span className="film-tag">pilot</span>}
+            </button>
+          ))}
+        </nav>
 
-        {/* Main layout: sidebar + content + right panel */}
-        <div className="flex flex-col xl:flex-row gap-6">
-          {/* Left Sidebar: Context Switcher + Prophecy Agent */}
-          <div className="xl:w-56 flex-shrink-0 space-y-4">
-            <ContextSwitcher
-              contexts={platform.contexts}
-              contextKeys={platform.contextKeys}
-              activeContext={activeContext}
-              onSelect={handleContextSwitch}
-            />
-            <ProphecyAgent prophecyValue={signals.prophecy} />
-          </div>
+        <div className={`film-layout transition-opacity duration-150 ${transitioning ? 'opacity-0' : 'opacity-100'}`}>
+          <div className="min-w-0">
+            {/* Moment hero */}
+            <section className="film-hero" aria-live="polite">
+              <p className="film-when">{when || activeCtx.label}</p>
+              {when && <p className="film-moment">{activeCtx.label}</p>}
+              <p className="film-what">{what}</p>
+              <ul className="film-signals" aria-label="Signals in this moment">
+                {activeCtx.signals.map((s) => <li key={s.label}>{s.label}</li>)}
+              </ul>
+            </section>
 
-          {/* Center: Before / After columns */}
-          <div
-            className={`flex-1 min-w-0 transition-opacity duration-150 ${transitioning ? 'opacity-0' : 'opacity-100'}`}
-          >
-            {/* Active context bar */}
-            <div className={`rounded-lg border px-4 py-3 mb-5 ${activePlatform === 'streaming' ? 'border-red-600/30 bg-red-600/5' : 'border-blue-500/20 bg-blue-500/5'}`}>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-lg">{activeCtx.emoji}</span>
-                <span className="font-syne font-bold text-white/90">{activeCtx.label}</span>
-                <span className="font-dm-mono text-xs text-white/40">{activeCtx.subtitle}</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {activeCtx.signals.map((signal) => (
-                  <span
-                    key={signal.label}
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-dm-mono text-[10px] ${activePlatform === 'streaming' ? 'bg-red-600/10 border border-red-600/20 text-red-300/80' : 'bg-blue-500/10 border border-blue-500/20 text-blue-300/80'}`}
-                  >
-                    <span>{signal.emoji}</span>
-                    {signal.label}
-                  </span>
-                ))}
-              </div>
-              {activePlatform === 'streaming' && streamingInsights[activeContext] && (
-                <div className="font-dm-mono text-[11px] text-white/50 mt-2 pt-2 border-t border-white/5">
-                  {streamingInsights[activeContext]}
-                </div>
-              )}
+            {/* Moment picker */}
+            <div className="film-picker" role="group" aria-label="Choose a moment">
+              {platform.contextKeys.map((key) => (
+                <button key={key} type="button" aria-pressed={key === activeContext} onClick={() => handleContextSwitch(key)}>
+                  {platform.contexts[key].label}
+                </button>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Before column */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <h2 className="font-syne text-lg font-bold text-white/70">Before</h2>
-                  <span className="font-dm-mono text-[11px] text-white/30">Engagement score only</span>
-                </div>
-                <div className="space-y-2">
-                  {platform.catalog.map((item, i) => (
-                    <ContentCard key={item.id} item={item} rank={i + 1} variant="before" />
-                  ))}
-                </div>
+            {/* Order toggle */}
+            <div className="film-order">
+              <div className="film-segment" role="group" aria-label="Order">
+                <button type="button" aria-pressed={view === 'moment'} onClick={() => setView('moment')}>For this moment</button>
+                <button type="button" aria-pressed={view === 'engagement'} onClick={() => setView('engagement')}>Engagement</button>
               </div>
-
-              {/* After column */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <h2 className="font-syne text-lg font-bold text-green-400/80">After</h2>
-                  <span className="font-dm-mono text-[11px] text-white/30">Intent-adjusted</span>
-                </div>
-                <div className="space-y-2">
-                  {rankedItems.map((item, i) => (
-                    <ContentCard key={item.id} item={item} rank={i + 1} variant="after" onHover={handleHover} />
-                  ))}
-                </div>
-              </div>
+              <p className="film-order-note">
+                {view === 'moment' ? 'Ranked by the engine for this moment.' : 'What an engagement-only feed would show.'}
+              </p>
             </div>
+
+            <PosterGrid items={displayItems} view={view} selectedId={selectedId} onSelect={handleSelect} />
           </div>
 
-          {/* Right Sidebar: Signal Sliders + Scoring Formula */}
-          <div className="xl:w-72 flex-shrink-0 space-y-4">
-            <SignalSliders
-              configs={platform.signalConfigs}
-              values={signals}
-              defaults={activeCtx.defaults}
-              onChange={handleSignalChange}
-              onReset={handleSignalReset}
-            />
-            <ScoringFormula item={focusItem} />
-          </div>
+          {/* Focus + Why */}
+          <aside className="film-side" ref={sideRef}>
+            {focusItem && (
+              <FocusPanel item={focusItem} rank={focusRank} total={rankedItems.length} signalConfigs={platform.signalConfigs} />
+            )}
+            <button type="button" className="film-why-btn" aria-expanded={whyOpen} aria-controls="film-why" onClick={() => setWhyOpen((v) => !v)}>
+              {whyOpen ? 'Hide the math' : 'Why this order?'}
+            </button>
+            <div id="film-why" hidden={!whyOpen} className="film-why">
+              <ScoringFormula item={focusItem} />
+              <SignalSliders
+                configs={platform.signalConfigs}
+                values={signals}
+                defaults={activeCtx.defaults}
+                onChange={handleSignalChange}
+                onReset={handleSignalReset}
+              />
+              <ProphecyAgent prophecyValue={signals.prophecy} />
+            </div>
+          </aside>
         </div>
-
         </>}
-        {/* Footer */}
-        <footer className="mt-10 pt-4 border-t border-white/5">
-          <p className="font-dm-mono text-xs text-white/20 text-center">
-            Intent Engine — context-aware content re-ranking demo
-          </p>
+
+        <footer className="film-footer">
+          Deterministic ranking. Every result explained. Stimulation values are estimated in this demo.
         </footer>
       </div>
     </div>
