@@ -103,11 +103,11 @@ body.record .frame { width: 1080px; border-radius: 0; box-shadow: none; }
 }
 </style>
 
-<div class="frame" id="frame" role="img" aria-label="Concept animation. At 8:45 PM bedtime, a row of titles ranked by engagement re-ranks for bedtime. A thriller and two intense titles are held back, including a TV-Y show whose pacing, loudness, and motion are over the bedtime cap. Bluey S4 rises to first with the reason calm, short, familiar.">
+<div class="frame" id="frame" role="img" aria-label="Concept animation. At a 6:00 PM evening wind-down, a row of titles ranked by engagement re-ranks for winding down. A thriller and two intense titles are held back, including a TV-Y show whose pacing, loudness, and motion are over the bedtime cap. Bluey S4 rises to first with the reason calm, short, familiar.">
   <div id="stage">
     <div id="world"></div>
-    <div id="clock" class="fade">8:45 PM</div>
-    <div id="moment" class="fade">Bedtime</div>
+    <div id="clock" class="fade">6:00 PM</div>
+    <div id="moment" class="fade">Evening Wind-Down</div>
     <div id="label" class="fade"></div>
     <div id="caption" class="fade"></div>
     <div id="meters" class="fade">
@@ -130,7 +130,7 @@ body.record .frame { width: 1080px; border-radius: 0; box-shadow: none; }
 </div>
 
 <script>
-// Titles, engagement scores, and stimulation data mirror the live /demo (Streaming, Bedtime).
+// Titles, engagement scores, and stimulation data mirror the live /demo (Streaming, Evening Wind-Down).
 const TITLES = [
   { id: 'dark',    name: 'Dark Season 3',       meta: 'TV-MA · 52 min', tone: 'linear-gradient(160deg,#1d3b44,#0b1417)', held: 'TV-MA' },
   { id: 'sensory', name: 'Sensory Rush Rhymes', meta: 'TV-Y · 8 min',   tone: 'linear-gradient(160deg,#ff5e8a,#ff9a3c 55%,#ffd23f)', held: 'High stim' },
@@ -206,7 +206,7 @@ async function play() {
     await at(4400);  on('label', false);
     await at(4700);  layout(BEDTIME, true);
                      ['dark', 'sensory', 'incep'].forEach((id) => tiles[id].classList.add('held'));
-                     $('label').innerHTML = 'Ranked for <b>bedtime</b>'; on('label');
+                     $('label').innerHTML = 'Ranked for <b>winding down</b>'; on('label');
     await at(6900);  stage.classList.add('focus'); camera('sensory', 1.75, 560); tiles.sensory.classList.add('lit');
                      $('caption').innerHTML = 'Rated TV-Y.<span>Too intense for tonight.</span>'; on('caption');
     await at(7700);  on('meters'); document.querySelectorAll('.fill').forEach((f) => (f.style.width = f.dataset.to + '%'));

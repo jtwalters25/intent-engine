@@ -40,7 +40,7 @@ export default function ProphecyAgent({ prophecyValue }: ProphecyAgentProps) {
         </span>
       </div>
       <p className="font-dm-mono text-[10px] text-orange-300/50 mt-1.5 leading-relaxed">
-        Auto-switch scheduled for 9:00 PM daily.
+        Wind-down auto-switch scheduled for 6:00 PM daily.
         <br />
         Next trigger in <span className="text-orange-300/80">{minutesLeft} min</span>.
       </p>

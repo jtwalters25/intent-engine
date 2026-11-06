@@ -2,7 +2,7 @@
 
 **A deterministic re-ranking layer that adapts recommendations to the moment (who's watching, time of day, parent-set intent), with every ranking explained.**
 
-![Intent Engine demo: bedtime picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif)
+![Intent Engine demo: evening wind-down picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif)
 
 **Try the demo:** https://intentengine.vercel.app/demo
 
@@ -14,7 +14,7 @@ First commit: February 2026.
 
 ## Why I Built This
 
-As a parent, I spend real time every day filtering kids' content by hand, because streaming recommendations optimize for engagement rather than the intent I have in the moment ("it's bedtime," "keep it calm"). My take as an engineer is that this belongs in a deterministic, explainable re-ranking layer instead of a model you can't inspect: the same context should always produce the same, traceable ordering, and every score should break down into signals a person can read. This repo is where I test that idea across more than one domain.
+As a parent, I spend real time every day filtering kids' content by hand, because streaming recommendations optimize for engagement rather than the intent I have in the moment ("it's time to wind down," "keep it calm"). My take as an engineer is that this belongs in a deterministic, explainable re-ranking layer instead of a model you can't inspect: the same context should always produce the same, traceable ordering, and every score should break down into signals a person can read. This repo is where I test that idea across more than one domain.
 
 ## Live Demo
 
@@ -28,7 +28,7 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 
 **Problem:** Parents spend ~10 min/day manually filtering content. Streaming recommendations optimize for engagement, not parental intent.
 
-**Solution:** A re-ranking layer that sits between retrieval and presentation. Parents express context once ("it's bedtime"), and the system adapts deterministically and explainably, with no ML required.
+**Solution:** A re-ranking layer that sits between retrieval and presentation. Parents express context once ("it's time to wind down"), and the system adapts deterministically and explainably, with no ML required.
 
 **Key capabilities:**
 - Rules-first intent translation (keyword mapping, time-of-day inference)
@@ -67,11 +67,11 @@ The `/demo` page is an interactive demo showing the engine's re-ranking behavior
 | Feature | Description |
 |---------|-------------|
 | **Platform Tabs** | Switch between 5 verticals (Streaming, Music, E-Commerce, Ride Matching, Food Delivery), 8 items each. Streaming carries a `PILOT` badge in the UI |
-| **Context Presets** | 4 presets per platform (e.g., Bedtime, Solo Morning, Family Weekend, Focus Session) |
+| **Context Presets** | 4 presets per platform (e.g., Evening Wind-Down, Solo Morning, Family Weekend, Focus Session) |
 | **Signal Sliders** | 5 tweakable signals: Time of Day, Viewer Profile, Energy Intent, Device, Prophecy Schedule |
 | **Before / After** | Side-by-side view showing engagement-only vs. intent-adjusted ranking |
 | **Scoring Formula** | Live code-style display showing the multiplier breakdown for any item |
-| [**Stimulation Index**](docs/stimulation_filtering_plan.md) | Scores pacing (cuts/min), loudness (LUFS), and motion per title. Values in the demo are estimated. At bedtime, a hard gate holds back over-stimulating titles even when the age rating is fine. |
+| [**Stimulation Index**](docs/stimulation_filtering_plan.md) | Scores pacing (cuts/min), loudness (LUFS), and motion per title. Values in the demo are estimated. During a wind-down, a hard gate holds back over-stimulating titles even when the age rating is fine. |
 | **Prophecy Agent** | Mock scheduling indicator with countdown timer |
 
 ### Per-Vertical Status
@@ -109,7 +109,7 @@ if (maturity === "adult" && viewer === "kids") → BLOCKED (score = 0)
 
 | Screen | Description |
 |--------|-------------|
-| ![Intent Engine demo: bedtime picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif) | Multi-platform demo with signal sliders and before/after ranking |
+| ![Intent Engine demo: evening wind-down picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif) | Multi-platform demo with signal sliders and before/after ranking |
 | ![Scoring Formula](docs/screenshots/08-scoring-formula.png) | Live multiplier breakdown for a selected item |
 | ![Platform Switch](docs/screenshots/09-platform-music.png) | Music platform with wind-down context |
 
@@ -325,8 +325,8 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 
 ### Interactive Demo (`/demo`)
 
-![Intent Engine demo: bedtime picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif)
-**Re-Ranking Demo (Streaming / Bedtime).** Same 8-item catalog, two columns: engagement-only (left) vs. intent-adjusted (right). At bedtime with a kids viewer profile, Bluey S4 jumps from #8 to #1 (+7 positions). Dark Season 3 (TV-MA) drops to the bottom; the viewer multiplier gates adult content without hard-filtering it. The right panel has 5 signal sliders that update rankings live: drag any slider and the items re-sort. The scoring formula box shows the multiplier math for the #1 item.
+![Intent Engine demo: evening wind-down picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif)
+**Re-Ranking Demo (Streaming / Evening Wind-Down).** A 41-title catalog ranked for 6:00 PM with a kids viewer profile and low energy. The top 9 are calm kids and family picks; titles over the maturity or stimulation gate sit in a held-back row. SpongeBob (TV-Y7) is held back on stimulation even though its rating is fine. Toggle to Engagement to see what an engagement-only feed would show, tap any title for its reason and meters, and open "Why this order?" for the signal sliders and scoring formula.
 
 ![Scoring Formula](docs/screenshots/08-scoring-formula.png)
 **Scoring Formula.** Every ranking decision breaks down into its parts. For Bluey S4: `base(0.58) x time(0.91) x viewer(1.20) x energy(0.90) x device(1.10) x prophecy(1.32) = 0.83`. Each multiplier maps to a single signal slider, so an engineer can trace any ranking anomaly back to the signal that caused it. That keeps debugging the ranking tractable.
