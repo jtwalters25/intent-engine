@@ -458,13 +458,13 @@ const foodDeliveryCatalog: PlatformItem[] = [
 
 const streamingContexts: Record<string, PlatformContext> = {
   bedtime: {
-    key: 'bedtime', label: 'Bedtime', emoji: '🌙',
-    subtitle: '8:45 PM — winding down for sleep',
+    key: 'bedtime', label: 'Evening Wind-Down', emoji: '🌙',
+    subtitle: '6:00 PM — after dinner, settling in',
     signals: [
-      { emoji: '🕐', label: '8:45 PM' }, { emoji: '👶', label: 'Ages 4-7' },
-      { emoji: '😴', label: 'Low energy' }, { emoji: '📱', label: 'Tablet' },
+      { emoji: '🕐', label: '6:00 PM' }, { emoji: '👶', label: 'Ages 4-7' },
+      { emoji: '😴', label: 'Low energy' }, { emoji: '📺', label: 'TV' },
     ],
-    defaults: { time: 1.0, viewer: 0.0, energy: 0.0, device: 0.25, prophecy: 0.8 },
+    defaults: { time: 0.75, viewer: 0.0, energy: 0.0, device: 0.75, prophecy: 0.8 },
   },
   'solo-morning': {
     key: 'solo-morning', label: 'Solo Morning', emoji: '☕',
