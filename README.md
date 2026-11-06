@@ -2,11 +2,11 @@
 
 **A deterministic re-ranking layer that adapts recommendations to the moment (who's watching, time of day, parent-set intent), with every ranking explained.**
 
-![Demo Overview](docs/screenshots/07-demo-overview.png)
+![Intent Engine demo: bedtime picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif)
 
 **Try the demo:** https://intentengine.vercel.app/demo
 
-Pick a context, drag the signal sliders, and watch the same catalog re-rank live, with the scoring formula shown for every item.
+Pick a moment and watch the same catalog re-rank live. Tap any title to see why it ranks where it does.
 
 First commit: February 2026.
 
@@ -109,7 +109,7 @@ if (maturity === "adult" && viewer === "kids") → BLOCKED (score = 0)
 
 | Screen | Description |
 |--------|-------------|
-| ![Demo Overview](docs/screenshots/07-demo-overview.png) | Multi-platform demo with signal sliders and before/after ranking |
+| ![Intent Engine demo: bedtime picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif) | Multi-platform demo with signal sliders and before/after ranking |
 | ![Scoring Formula](docs/screenshots/08-scoring-formula.png) | Live multiplier breakdown for a selected item |
 | ![Platform Switch](docs/screenshots/09-platform-music.png) | Music platform with wind-down context |
 
@@ -325,7 +325,7 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 
 ### Interactive Demo (`/demo`)
 
-![Demo Overview](docs/screenshots/07-demo-overview.png)
+![Intent Engine demo: bedtime picks, a solo adult morning, and SpongeBob held back for high stimulation](docs/screenshots/demo.gif)
 **Re-Ranking Demo (Streaming / Bedtime).** Same 8-item catalog, two columns: engagement-only (left) vs. intent-adjusted (right). At bedtime with a kids viewer profile, Bluey S4 jumps from #8 to #1 (+7 positions). Dark Season 3 (TV-MA) drops to the bottom; the viewer multiplier gates adult content without hard-filtering it. The right panel has 5 signal sliders that update rankings live: drag any slider and the items re-sort. The scoring formula box shows the multiplier math for the #1 item.
 
 ![Scoring Formula](docs/screenshots/08-scoring-formula.png)

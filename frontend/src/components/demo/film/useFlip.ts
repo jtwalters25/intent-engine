@@ -4,8 +4,9 @@ type Pos = { x: number; y: number };
 
 /**
  * FLIP reorder animation. Attach `register(id)` as the ref of each item's wrapper.
- * When `order` changes, each wrapper slides from its old slot to its new one,
- * staggered by its new position. Instant under prefers-reduced-motion.
+ * When `order` changes, each wrapper slides from its old slot to its new one and
+ * new arrivals fade up into place, staggered by position. Instant under
+ * prefers-reduced-motion.
  */
 export function useFlip(order: string[], staggerMs = 45) {
   const nodes = useRef(new Map<string, HTMLElement>());
@@ -21,11 +22,25 @@ export function useFlip(order: string[], staggerMs = 45) {
   useLayoutEffect(() => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const next = measure();
+    const firstRender = prev.current.size === 0;
     if (!reduce) {
       order.forEach((id, i) => {
         const el = nodes.current.get(id);
         const from = prev.current.get(id);
         const to = next.get(id);
+        if (el && !from && !firstRender) {
+          // New to the list: fade and rise into its slot, staggered like the movers
+          el.style.transition = 'none';
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(28px) scale(.96)';
+          requestAnimationFrame(() => {
+            el.style.transition = 'transform 950ms var(--film-spring), opacity 600ms var(--film-ease)';
+            el.style.transitionDelay = `${i * staggerMs}ms`;
+            el.style.opacity = '';
+            el.style.transform = '';
+          });
+          return;
+        }
         if (!el || !from || !to || (from.x === to.x && from.y === to.y)) return;
         el.style.transition = 'none';
         el.style.transform = `translate(${from.x - to.x}px, ${from.y - to.y}px)`;
