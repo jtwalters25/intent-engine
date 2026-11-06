@@ -3,7 +3,9 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import Demo from '@/pages/Demo';
 import { platforms, platformKeys, rankWithSignals } from '@/data/demoPlatforms';
 
-const tileOrder = () => screen.getAllByTestId('film-tile').map((el) => el.getAttribute('data-title'));
+const SHELF = 9;
+const titles = (id: string) => screen.queryAllByTestId(id).map((el) => el.getAttribute('data-title'));
+const tileOrder = () => titles('film-tile');
 
 // Platform switches fade for 150ms before swapping content
 async function switchPlatform(label: string) {
@@ -12,7 +14,7 @@ async function switchPlatform(label: string) {
 }
 
 describe('Demo film view', () => {
-  it('shows tiles in the engine order for every platform and context', async () => {
+  it('shows the engine top picks in order, and every held-back title, for every platform and context', async () => {
     render(<Demo />);
     for (const pk of platformKeys) {
       const platform = platforms[pk];
@@ -20,8 +22,11 @@ describe('Demo film view', () => {
       for (const ck of platform.contextKeys) {
         const ctx = platform.contexts[ck];
         fireEvent.click(screen.getByRole('button', { name: ctx.label, pressed: undefined }));
-        const expected = rankWithSignals(platform.catalog, ctx.defaults).map((r) => r.title);
-        expect(tileOrder(), `${pk} / ${ck}`).toEqual(expected);
+        const ranked = rankWithSignals(platform.catalog, ctx.defaults);
+        const shelf = ranked.filter((r) => !r.breakdown.blocked).slice(0, SHELF).map((r) => r.title);
+        const held = ranked.filter((r) => r.breakdown.blocked).map((r) => r.title);
+        expect(tileOrder(), `${pk} / ${ck} shelf`).toEqual(shelf);
+        expect(titles('film-held'), `${pk} / ${ck} held`).toEqual(held);
       }
     }
   });
@@ -32,7 +37,7 @@ describe('Demo film view', () => {
       const platform = platforms[pk];
       await switchPlatform(platform.label);
       fireEvent.click(screen.getByRole('button', { name: 'Engagement' }));
-      expect(tileOrder(), pk).toEqual(platform.catalog.map((c) => c.title));
+      expect(tileOrder(), pk).toEqual(platform.catalog.slice(0, SHELF).map((c) => c.title));
     }
   });
 
@@ -41,6 +46,13 @@ describe('Demo film view', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sensory Rush Rhymes, held back: High stim/ }));
     expect(screen.getByText('Held back.')).toBeInTheDocument();
     expect(screen.getByText(/Stimulation 0\.96 is over the 0\.50 cap/)).toBeInTheDocument();
+  });
+
+  it('keeps kids titles off the shelf for a solo adult morning', () => {
+    render(<Demo />);
+    fireEvent.click(screen.getByRole('button', { name: 'Solo Morning' }));
+    const kids = new Set(platforms.streaming.catalog.filter((c) => c.maturity === 'kids').map((c) => c.title));
+    expect(tileOrder().filter((t) => kids.has(t!))).toEqual([]);
   });
 
   it('keeps the formula and sliders one click away', () => {
