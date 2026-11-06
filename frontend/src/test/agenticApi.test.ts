@@ -35,7 +35,7 @@ describe('V4 transport', () => {
     await executePlan('plan_test', platforms.streaming.catalog);
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ plan_id: 'plan_test', candidates: catalogCandidates(platforms.streaming.catalog) });
     const candidate = catalogCandidates(platforms.streaming.catalog)[0];
-    expect(candidate.attributes).toEqual({ maturity: 'adult', calm_score: platforms.streaming.catalog[0].calmScore, complexity: platforms.streaming.catalog[0].complexity });
+    expect(candidate.attributes).toEqual({ maturity: platforms.streaming.catalog[0].maturity, calm_score: platforms.streaming.catalog[0].calmScore, complexity: platforms.streaming.catalog[0].complexity });
     expect(candidate.base_score).toBe(platforms.streaming.catalog[0].engagementScore);
   });
   it('uses the configured backend URL', async () => {

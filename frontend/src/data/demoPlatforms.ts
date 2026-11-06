@@ -2,26 +2,14 @@
 // Multi-platform catalogs, signal configs, and multiplier-based ranking
 // ---------------------------------------------------------------------------
 
-// SVG thumbnail generator
-const thumb = (
-  emoji: string,
-  gradFrom: string,
-  gradTo: string,
-  label: string,
-): string => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225" viewBox="0 0 400 225">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="${gradFrom}"/>
-        <stop offset="100%" stop-color="${gradTo}"/>
-      </linearGradient>
-    </defs>
-    <rect width="400" height="225" rx="0" fill="url(#g)"/>
-    <text x="200" y="100" font-size="64" text-anchor="middle" dominant-baseline="central">${emoji}</text>
-    <text x="200" y="160" font-family="system-ui,sans-serif" font-size="16" font-weight="600" fill="rgba(255,255,255,0.85)" text-anchor="middle">${label}</text>
-  </svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-};
+import { thumb } from './thumb';
+import {
+  streamingAdditions,
+  musicAdditions,
+  ecommerceAdditions,
+  rideAdditions,
+  foodAdditions,
+} from './catalogAdditions';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -256,13 +244,13 @@ const musicCatalog: PlatformItem[] = [
     maturity: 'family', calmScore: 0.95, complexity: 0.1,
   },
   {
-    id: 'deep-focus', title: 'Deep Focus Playlist', genre: 'Playlist · Ambient',
+    id: 'deep-focus', title: 'Deep Focus Playlist', genre: 'Ambient · Playlist',
     rating: 'E', runtime: '120 min', tags: ['focus', 'ambient', 'instrumental', 'background-friendly'],
     engagementScore: 0.88, emoji: '🎯', thumbnail: thumb('🎯', '#0a1a2e', '#1a2a3e', 'Deep Focus'),
     maturity: 'family', calmScore: 0.8, complexity: 0.05,
   },
   {
-    id: 'morning-jazz', title: 'Morning Jazz Mix', genre: 'Playlist · Jazz',
+    id: 'morning-jazz', title: 'Morning Jazz Mix', genre: 'Jazz · Playlist',
     rating: 'E', runtime: '90 min', tags: ['jazz', 'morning', 'relaxed', 'background-friendly'],
     engagementScore: 0.85, emoji: '☕', thumbnail: thumb('☕', '#2a1a0a', '#3a2a1a', 'Morning Jazz'),
     maturity: 'family', calmScore: 0.65, complexity: 0.15,
@@ -274,25 +262,25 @@ const musicCatalog: PlatformItem[] = [
     maturity: 'adult', calmScore: 0.2, complexity: 0.7,
   },
   {
-    id: 'kids-singalong', title: 'Kids Sing-Along', genre: 'Playlist · Children',
+    id: 'kids-singalong', title: 'Kids Sing-Along', genre: 'Children · Playlist',
     rating: 'E', runtime: '35 min', tags: ['kids', 'singalong', 'upbeat', 'interactive'],
     engagementScore: 0.76, emoji: '🎤', thumbnail: thumb('🎤', '#2a0a2e', '#3a1a3e', 'Sing-Along'),
     maturity: 'kids', calmScore: 0.3, complexity: 0.05,
   },
   {
-    id: 'lofi-study', title: 'Lo-Fi Study Beats', genre: 'Playlist · Lo-Fi',
+    id: 'lofi-study', title: 'Lo-Fi Study Beats', genre: 'Lo-Fi · Playlist',
     rating: 'E', runtime: '180 min', tags: ['lofi', 'study', 'ambient', 'background-friendly', 'instrumental'],
     engagementScore: 0.72, emoji: '📚', thumbnail: thumb('📚', '#1a1a0a', '#2a2a1a', 'Lo-Fi Study'),
     maturity: 'family', calmScore: 0.75, complexity: 0.05,
   },
   {
-    id: 'pop-hits', title: 'Pop Hits 2024', genre: 'Playlist · Pop',
+    id: 'pop-hits', title: 'Pop Hits 2024', genre: 'Pop · Playlist',
     rating: 'E', runtime: '60 min', tags: ['pop', 'upbeat', 'high-energy', 'trending'],
     engagementScore: 0.67, emoji: '🎵', thumbnail: thumb('🎵', '#2e0a1a', '#3e1a2a', 'Pop Hits'),
     maturity: 'family', calmScore: 0.15, complexity: 0.1,
   },
   {
-    id: 'classical-baby', title: 'Classical for Baby', genre: 'Playlist · Classical',
+    id: 'classical-baby', title: 'Classical for Baby', genre: 'Classical · Playlist',
     rating: 'E', runtime: '60 min', tags: ['classical', 'baby', 'calming', 'soothing', 'instrumental'],
     engagementScore: 0.60, emoji: '🎻', thumbnail: thumb('🎻', '#1a0a1a', '#2a1a2a', 'Classical Baby'),
     maturity: 'kids', calmScore: 0.95, complexity: 0.1,
@@ -713,38 +701,42 @@ const foodDeliveryContexts: Record<string, PlatformContext> = {
 // Platform definitions
 // ---------------------------------------------------------------------------
 
+// Catalog order is the engagement feed: highest engagement first (stable for ties).
+const byEngagement = (items: PlatformItem[]): PlatformItem[] =>
+  [...items].sort((a, b) => b.engagementScore - a.engagementScore);
+
 export const platforms: Record<PlatformKey, Platform> = {
   streaming: {
     key: 'streaming', label: 'Streaming', emoji: '🎬',
-    catalog: streamingCatalog,
+    catalog: byEngagement([...streamingCatalog, ...streamingAdditions]),
     contexts: streamingContexts,
     contextKeys: ['bedtime', 'solo-morning', 'family-weekend', 'focus-session'],
     signalConfigs: baseSignalConfigs,
   },
   music: {
     key: 'music', label: 'Music', emoji: '🎵',
-    catalog: musicCatalog,
+    catalog: byEngagement([...musicCatalog, ...musicAdditions]),
     contexts: musicContexts,
     contextKeys: ['wind-down', 'morning-commute', 'family-play', 'deep-work'],
     signalConfigs: baseSignalConfigs,
   },
   ecommerce: {
     key: 'ecommerce', label: 'E-Commerce', emoji: '🛒',
-    catalog: ecommerceCatalog,
+    catalog: byEngagement([...ecommerceCatalog, ...ecommerceAdditions]),
     contexts: ecommerceContexts,
     contextKeys: ['baby-shower', 'treat-yourself', 'family-holiday', 'home-office'],
     signalConfigs: baseSignalConfigs,
   },
   ride_matching: {
     key: 'ride_matching', label: 'Ride Matching', emoji: '🚗',
-    catalog: rideMatchingCatalog,
+    catalog: byEngagement([...rideMatchingCatalog, ...rideAdditions]),
     contexts: rideMatchingContexts,
     contextKeys: ['morning-commute', 'friday-night', 'airport-run', 'weekend-errand'],
     signalConfigs: rideMatchingSignals,
   },
   food_delivery: {
     key: 'food_delivery', label: 'Food Delivery', emoji: '🍔',
-    catalog: foodDeliveryCatalog,
+    catalog: byEngagement([...foodDeliveryCatalog, ...foodAdditions]),
     contexts: foodDeliveryContexts,
     contextKeys: ['sunday-comfort', 'weekday-lunch', 'healthy-reset', 'late-night-craving'],
     signalConfigs: foodDeliverySignals,

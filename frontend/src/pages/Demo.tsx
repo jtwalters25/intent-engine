@@ -10,7 +10,9 @@ import {
 import SignalSliders from '@/components/demo/SignalSliders';
 import ScoringFormula from '@/components/demo/ScoringFormula';
 import ProphecyAgent from '@/components/demo/ProphecyAgent';
-import PosterGrid, { type OrderView } from '@/components/demo/film/PosterGrid';
+import PosterGrid, { HeldStrip, type OrderView } from '@/components/demo/film/PosterGrid';
+
+const SHELF_SIZE = 9;
 import FocusPanel from '@/components/demo/film/FocusPanel';
 
 /** Context subtitles read "8:45 PM — winding down for sleep"; split into the time and the description. */
@@ -59,11 +61,14 @@ export default function Demo() {
     [platform.catalog, signals],
   );
 
-  // Engagement view: the catalog's own order, same ranked objects so details stay available
+  // A shelf shows the top picks, like a real app's row. Held-back titles sort last
+  // (score 0), so the shelf keeps each title's rank from the full ranking.
+  const heldItems = useMemo(() => rankedItems.filter((r) => r.breakdown.blocked), [rankedItems]);
   const displayItems = useMemo(() => {
-    if (view === 'moment') return rankedItems;
+    if (view === 'moment') return rankedItems.filter((r) => !r.breakdown.blocked).slice(0, SHELF_SIZE);
+    // Engagement view: the catalog's own order, same ranked objects so details stay available
     const byId = new Map(rankedItems.map((r) => [r.id, r]));
-    return platform.catalog.map((c) => byId.get(c.id)!);
+    return platform.catalog.slice(0, SHELF_SIZE).map((c) => byId.get(c.id)!);
   }, [view, rankedItems, platform.catalog]);
 
   // Focus: the selected tile, else the #1 pick for this moment
@@ -170,11 +175,14 @@ export default function Demo() {
                 <button type="button" aria-pressed={view === 'engagement'} onClick={() => setView('engagement')}>Engagement</button>
               </div>
               <p className="film-order-note">
-                {view === 'moment' ? 'Ranked by the engine for this moment.' : 'What an engagement-only feed would show.'}
+                {view === 'moment'
+                  ? `Top ${displayItems.length} of ${platform.catalog.length} for this moment.`
+                  : `Top ${displayItems.length} of ${platform.catalog.length} by engagement alone.`}
               </p>
             </div>
 
             <PosterGrid items={displayItems} view={view} selectedId={selectedId} onSelect={handleSelect} />
+            {view === 'moment' && <HeldStrip items={heldItems} selectedId={selectedId} onSelect={handleSelect} />}
           </div>
 
           {/* Focus + Why */}
@@ -200,7 +208,7 @@ export default function Demo() {
         </div>
 
         <footer className="film-footer">
-          Deterministic ranking. Every result explained. Stimulation values are estimated in this demo.
+          Deterministic ranking. Every result explained. Sample data: titles are real, but engagement and stimulation values are estimates, not measurements of any title.
         </footer>
       </div>
     </div>
