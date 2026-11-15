@@ -26,7 +26,7 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 
 ## What It Does
 
-**Problem:** Parents spend ~10 min/day manually filtering content. Streaming recommendations optimize for engagement, not parental intent.
+**Problem:** In my house, filtering kids' content by hand is a daily chore. Streaming recommendations optimize for engagement, not parental intent.
 
 **Solution:** A re-ranking layer that sits between retrieval and presentation. Parents express context once ("it's time to wind down"), and the system adapts deterministically and explainably, with no ML required.
 
@@ -45,7 +45,7 @@ As a parent, I spend real time every day filtering kids' content by hand, becaus
 
 ### Real-world activity finder (live, backend-connected)
 
-**Discover** finds real things to do (events + places) and ranks them against your goal — *faithfully*: it never asserts what it can't verify (every attribute is `VERIFIED` / `EXTRACTED` / `UNKNOWN`), excludes items on verified hard constraints (e.g. an 18+ event when kids are in the party), shows unverifiable items as **"needs verification"** instead of fabricating, and grounds every explanation in evidence. Deterministic and reproducible.
+**Discover** finds real things to do (events + places) and ranks them against your goal — *faithfully*: it never asserts what it can't verify (every attribute is `VERIFIED` / `EXTRACTED` / `UNKNOWN`), excludes items on verified hard constraints (e.g. an 18+ event when kids are in the party), shows unverifiable items as **"needs verification"** instead of fabricating, and grounds every explanation in evidence. Deterministic and reproducible. (Why abstaining is a feature: [When AI Agents Cost More Than the Work They Automate](https://jtwalters25.github.io/writing/when-ai-agents-cost-more.html).)
 
 - **Live demo API:** [`intent-engine-backend.vercel.app`](https://intent-engine-backend.vercel.app) — realistic fixture data, no API keys:
   ```bash
@@ -286,7 +286,7 @@ suggestion = agent.should_suggest_intent_shift(datetime(2026, 2, 20, 19, 50))
 
 ## Business Case
 
-**Problem:** Parents spend 10 min/day manually filtering content for kids.
+**Problem:** Filtering kids' content by hand is a daily chore, and it starts over every session.
 
 **Solution:** Set intent once, and it auto-switches on schedule.
 
