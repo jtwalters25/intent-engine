@@ -68,7 +68,7 @@ The `/demo` page is an interactive demo showing the engine's re-ranking behavior
 |---------|-------------|
 | **Platform Tabs** | Switch between 5 verticals (Streaming, Music, E-Commerce, Ride Matching, Food Delivery), 8 items each. Streaming carries a `PILOT` badge in the UI |
 | **Context Presets** | 4 presets per platform (e.g., Evening Wind-Down, Solo Morning, Family Weekend, Focus Session) |
-| **Signal Sliders** | 5 tweakable signals: Time of Day, Viewer Profile, Energy Intent, Device, Prophecy Schedule |
+| **Signal Sliders** | 5 tweakable signals: Time of Day, Viewer Profile, Energy Intent, Device, Learned Routine |
 | **Before / After** | Side-by-side view showing engagement-only vs. intent-adjusted ranking |
 | **Scoring Formula** | Live code-style display showing the multiplier breakdown for any item |
 | [**Stimulation Index**](docs/stimulation_filtering_plan.md) | Scores pacing (cuts/min), loudness (LUFS), and motion per title. Values in the demo are estimated. During a wind-down, a hard gate holds back over-stimulating titles even when the age rating is fine. |
