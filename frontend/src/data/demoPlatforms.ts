@@ -153,7 +153,7 @@ const baseSignalConfigs: SignalConfig[] = [
   },
   {
     key: 'prophecy',
-    label: 'Prophecy Schedule',
+    label: 'Learned Routine',
     emoji: '🔮',
     min: 0,
     max: 1,
@@ -809,9 +809,12 @@ function computeEnergyMultiplier(item: PlatformItem, energySignal: number): numb
   return 1.0 - 0.3 * diff;
 }
 
-function computeDeviceMultiplier(item: PlatformItem, deviceSignal: number): number {
+function computeDeviceMultiplier(item: PlatformItem, deviceSignal: number, kidsWindDown: boolean): number {
   // 0 = phone (short form), 1 = home theater (premium long form)
   const runtimeMin = parseInt(item.runtime) || 30;
+
+  // Young kids winding down: a short episode fits before bed, a feature-length title doesn't
+  if (kidsWindDown) return runtimeMin > 45 ? 0.4 : 1.0;
 
   if (deviceSignal < 0.3) {
     // Small device: favor short content
@@ -908,7 +911,7 @@ export function rankWithSignals(
     const timeMultiplier = computeTimeMultiplier(item, signals.time);
     const viewerMultiplier = computeViewerMultiplier(item, signals.viewer);
     const energyMultiplier = computeEnergyMultiplier(item, signals.energy);
-    const deviceMultiplier = computeDeviceMultiplier(item, signals.device);
+    const deviceMultiplier = computeDeviceMultiplier(item, signals.device, lowStimMode && signals.viewer <= 0.15);
     const prophecyBoost = computeProphecyBoost(item, signals.prophecy, signals.time);
 
     const maturityBlocked = viewerMultiplier === 0.0;

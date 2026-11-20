@@ -295,7 +295,7 @@
 .film-chip-btn[aria-pressed="true"] { color: var(--film-fg); }
 .demo-root.film button:focus-visible { outline: 2px solid var(--film-calm); outline-offset: 3px; }
 
-.film-platforms { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 36px; }
+.film-platforms { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 4px; margin-bottom: 36px; }
 .film-platforms button { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; font-weight: 500; font-size: 14px; color: var(--film-muted); box-shadow: inset 0 0 0 1px var(--film-hair); transition: all 250ms var(--film-ease); }
 .film-platforms button[aria-pressed="true"] { color: var(--film-fg); background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
 .film-tag { font: 500 10px var(--film-mono); text-transform: uppercase; letter-spacing: .08em; padding: 2px 6px; border-radius: 999px; background: rgba(255,255,255,.08); color: var(--film-muted); }

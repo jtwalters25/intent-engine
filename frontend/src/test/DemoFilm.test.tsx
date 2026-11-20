@@ -31,6 +31,12 @@ describe('Demo film view', () => {
     }
   });
 
+  it('keeps feature-length titles off the kids wind-down shelf', () => {
+    const tv = platforms.streaming;
+    const shelf = rankWithSignals(tv.catalog, tv.contexts.bedtime.defaults).filter((r) => !r.breakdown.blocked).slice(0, SHELF);
+    for (const item of shelf) expect(parseInt(item.runtime), item.title).toBeLessThanOrEqual(45);
+  });
+
   it('leads Sunday Comfort food with comfort dishes, not health food', () => {
     const food = platforms.food_delivery;
     const top3 = rankWithSignals(food.catalog, food.contexts['sunday-comfort'].defaults).slice(0, 3);
