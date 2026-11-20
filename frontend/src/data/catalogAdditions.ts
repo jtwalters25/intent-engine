@@ -126,10 +126,10 @@ export const foodAdditions: PlatformItem[] = [
   item('mac-cheese', 'Kids Mac & Cheese', 'Kids Menu', '4.4★', '20 min', 0.75, 'family', 0.6, 0.1, ['kids', 'mild', 'comfort'], ['#f2c230', '#d98a2b']),
   item('greek-bowl', 'Greek Salad Bowl', 'Mediterranean', '4.6★', '20 min', 0.72, 'kids', 0.8, 0.3, ['healthy', 'light', 'fresh'], ['#2ba36b', '#1e5c3b']),
   item('chicken-soup', 'Chicken Noodle Soup', 'Comfort', '4.6★', '25 min', 0.7, 'family', 0.9, 0.2, ['comfort', 'soup', 'mild'], ['#e8c97c', '#8f6b3b']),
-  item('poke', 'Poke Bowl', 'Hawaiian', '4.7★', '25 min', 0.8, 'family', 0.6, 0.3, ['fresh', 'healthy'], ['#e85a6b', '#1ba3a3']),
+  item('poke', 'Poke Bowl', 'Hawaiian', '4.7★', '25 min', 0.8, 'kids', 0.6, 0.3, ['fresh', 'healthy'], ['#e85a6b', '#1ba3a3']),
   item('breakfast-burrito', 'Breakfast Burrito', 'Breakfast', '4.5★', '15 min', 0.83, 'family', 0.3, 0.2, ['morning', 'quick', 'hearty'], ['#f2a53b', '#5c3b1e']),
-  item('avocado-toast', 'Avocado Toast', 'Cafe', '4.4★', '15 min', 0.7, 'family', 0.7, 0.2, ['morning', 'light', 'healthy'], ['#7cc26a', '#3b5c2b']),
+  item('avocado-toast', 'Avocado Toast', 'Cafe', '4.4★', '15 min', 0.7, 'kids', 0.7, 0.2, ['morning', 'light', 'healthy'], ['#7cc26a', '#3b5c2b']),
   item('wings', 'Wings Combo', 'Bar Food', '4.3★', '30 min', 0.88, 'adult', 0.1, 0.2, ['indulgent', 'game-day', 'spicy'], ['#d93b2b', '#3b1414']),
   item('pad-thai', 'Pad Thai', 'Thai', '4.6★', '30 min', 0.85, 'family', 0.4, 0.3, ['comfort', 'noodles'], ['#f2a53b', '#8f3b1e']),
-  item('bibimbap', 'Bibimbap', 'Korean', '4.8★', '35 min', 0.78, 'family', 0.5, 0.5, ['healthy', 'hearty', 'discovery'], ['#d9662b', '#2b5c3b']),
+  item('bibimbap', 'Bibimbap', 'Korean', '4.8★', '35 min', 0.78, 'kids', 0.5, 0.5, ['healthy', 'hearty', 'discovery'], ['#d9662b', '#2b5c3b']),
 ];

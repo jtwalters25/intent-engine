@@ -209,6 +209,10 @@ export default function Demo() {
 
         <footer className="film-footer">
           Deterministic ranking. Every result explained. Sample data: titles are real, but engagement and stimulation values are estimates, not measurements of any title.
+          <p className="mt-2">
+            No model runs on this page: it ranks in your browser with plain code. In the backend, an optional model may only suggest an intent, and code validates the plan before it runs, falling back to a safe default if anything is off. See{' '}
+            <a className="underline" href="https://github.com/jtwalters25/intent-engine/blob/main/backend/intent_engine/agentic/validator.py" target="_blank" rel="noreferrer">validator.py</a>.
+          </p>
         </footer>
       </div>
     </div>

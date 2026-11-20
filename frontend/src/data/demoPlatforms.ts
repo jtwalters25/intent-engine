@@ -401,6 +401,7 @@ const rideMatchingCatalog: PlatformItem[] = [
 // Food Delivery catalog (8 items)
 // ---------------------------------------------------------------------------
 
+// Maturity doubles as diet here, as in foodAdditions: 'kids' = health-forward, 'adult' = indulgent.
 const foodDeliveryCatalog: PlatformItem[] = [
   {
     id: 'thai-bowl', title: 'Thai Comfort Bowl', genre: 'Thai', rating: '4.6★',
@@ -412,7 +413,7 @@ const foodDeliveryCatalog: PlatformItem[] = [
     id: 'acai-bowl', title: 'Acai Health Bowl', genre: 'Health', rating: '4.8★',
     runtime: '15 min', tags: ['healthy', 'fresh', 'superfood'],
     engagementScore: 0.82, emoji: '🫐', thumbnail: thumb('🫐', '#1a0a2e', '#2a1a3e', 'Acai Bowl'),
-    maturity: 'family', calmScore: 0.7, complexity: 0.3,
+    maturity: 'kids', calmScore: 0.7, complexity: 0.3,
   },
   {
     id: 'burrito', title: 'Quick Burrito', genre: 'Mexican', rating: '4.3★',
@@ -436,13 +437,13 @@ const foodDeliveryCatalog: PlatformItem[] = [
     id: 'sushi', title: 'Sushi Platter', genre: 'Japanese', rating: '4.9★',
     runtime: '35 min', tags: ['premium', 'fresh', 'date-night'],
     engagementScore: 0.74, emoji: '🍣', thumbnail: thumb('🍣', '#0a1a2e', '#1a2a3e', 'Sushi'),
-    maturity: 'adult', calmScore: 0.6, complexity: 0.7,
+    maturity: 'family', calmScore: 0.6, complexity: 0.7,
   },
   {
     id: 'caesar', title: 'Caesar Salad', genre: 'Health', rating: '4.2★',
     runtime: '12 min', tags: ['healthy', 'light', 'quick'],
     engagementScore: 0.65, emoji: '🥗', thumbnail: thumb('🥗', '#0a2a0a', '#1a3a1a', 'Caesar'),
-    maturity: 'family', calmScore: 0.8, complexity: 0.1,
+    maturity: 'kids', calmScore: 0.8, complexity: 0.1,
   },
   {
     id: 'tacos', title: 'Late Night Tacos', genre: 'Mexican', rating: '4.4★',
