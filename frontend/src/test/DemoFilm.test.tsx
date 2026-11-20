@@ -31,6 +31,18 @@ describe('Demo film view', () => {
     }
   });
 
+  it('leads Sunday Comfort food with comfort dishes, not health food', () => {
+    const food = platforms.food_delivery;
+    const top3 = rankWithSignals(food.catalog, food.contexts['sunday-comfort'].defaults).slice(0, 3);
+    for (const item of top3) expect(item.tags, item.title).toContain('comfort');
+  });
+
+  it('points to the backend plan validator, and says no model runs here', () => {
+    render(<Demo />);
+    expect(screen.getByText(/No model runs on this page/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'validator.py' }).getAttribute('href')).toContain('backend/intent_engine/agentic/validator.py');
+  });
+
   it('shows the catalog engagement order in Engagement view', async () => {
     render(<Demo />);
     for (const pk of platformKeys) {
